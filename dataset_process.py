@@ -4,6 +4,43 @@ import os
 from utils import *
 
 CITYSCAPES_dir = "/mnt/data/andy/dataset/CITYSCAPES/gtFine_trainvaltest/gtFine/train"
+labels = [
+    (  0,  0,  0),
+    (  0,  0,  0),
+    (  0,  0,  0),
+    (  0,  0,  0),
+    (  0,  0,  0),
+    (111, 74,  0),
+    ( 81,  0, 81),
+    (128, 64,128),
+    (244, 35,232),
+    (250,170,160),
+    (230,150,140),
+    ( 70, 70, 70),
+    (102,102,156),
+    (190,153,153),
+    (180,165,180),
+    (150,100,100),
+    (150,120, 90),
+    (153,153,153),
+    (153,153,153),
+    (250,170, 30),
+    (220,220,  0),
+    (107,142, 35),
+    (152,251,152),
+    ( 70,130,180),
+    (220, 20, 60),
+    (255,  0,  0),
+    (  0,  0,142),
+    (  0,  0, 70),
+    (  0, 60,100),
+    (  0,  0, 90),
+    (  0,  0,110),
+    (  0, 80,100),
+    (  0,  0,230),
+    (119, 11, 32),
+    (  0,  0,142)
+]
 
 
 def store_single(filename, height , width, col_num, sel):
@@ -49,7 +86,8 @@ def crop_images_label(dataset_dir, is_mask=True):
     Read all labels under the different folders
     Crop, resize and store them
     example code:
-        crop_images(CITYSCAPES_dir, is_mask=True)
+        ddir = '/home/andy/dataset/CITYSCAPES/gtFine_trainvaltest/gtFine/train'
+        crop_images_label(ddir, is_mask=True)
     """
     data = []
     for folder in os.listdir(dataset_dir):
@@ -60,12 +98,12 @@ def crop_images_label(dataset_dir, is_mask=True):
         print ('{}/{}'.format(index, len(data)))
 
         img = scipy.misc.imread(filePath).astype(np.uint8)
-        img = scipy.misc.imresize(img, 0.25, interp='bilinear', mode=None)
         if is_mask:
             mask = np.zeros((img.shape[0], img.shape[1]), dtype=np.bool_)
 
             mask[np.nonzero(img == 24)] = True
             img = mask
+        img = scipy.misc.imresize(img, 0.25, interp='bilinear', mode=None)
 
         scipy.misc.imsave('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/label2/' + filePath.split('/')[-1], img)
         #break
@@ -76,7 +114,7 @@ def crop_images_color(dataset_dir, is_mask=True):
     Read all labels under the different folders
     Crop, resize and store them
     example code:
-        crop_images(CITYSCAPES_dir, is_mask=True)
+        crop_images_color(CITYSCAPES_dir, is_mask=True)
     """
     data = []
     for folder in os.listdir(dataset_dir):
@@ -136,3 +174,18 @@ def crop_images_same_dir(data_set_dir):
                           img[0:192, :, :])
         #break
 
+
+def label_visualize(img_dir):
+    img = scipy.misc.imread(img_dir).astype(np.uint8)
+    visual = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
+
+    for i in range(0, 34):
+        index = np.nonzero(img == i)
+        visual[index + (0,)] = labels[i][0]
+        visual[index + (1,)] = labels[i][1]
+        visual[index + (2,)] = labels[i][2]
+
+    scipy.misc.imsave('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/' + img_dir.split('/')[-1], visual)
+
+img_dir = '/home/andy/dataset/CITYSCAPES/gtFine_trainvaltest/gtFine/train/aachen/aachen_000000_000019_gtFine_labelIds.png'
+label_visualize(img_dir)

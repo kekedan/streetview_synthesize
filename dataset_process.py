@@ -98,12 +98,12 @@ def crop_images_label(dataset_dir, is_mask=True):
         print ('{}/{}'.format(index, len(data)))
 
         img = scipy.misc.imread(filePath).astype(np.uint8)
+        img = scipy.misc.imresize(img, 0.25, interp='nearest', mode=None)
         if is_mask:
             mask = np.zeros((img.shape[0], img.shape[1]), dtype=np.bool_)
 
             mask[np.nonzero(img == 24)] = True
             img = mask
-        img = scipy.misc.imresize(img, 0.25, interp='bilinear', mode=None)
 
         scipy.misc.imsave('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/label2/' + filePath.split('/')[-1], img)
         #break
@@ -176,6 +176,14 @@ def crop_images_same_dir(data_set_dir):
 
 
 def label_visualize(img_dir):
+    """
+    transfer label image to color image
+    :param img_dir: dir of the image
+    :return: visualization
+    example code:
+        img_dir = '/home/andy/dataset/CITYSCAPES/for_wonderful_chou/label/aachen_000051_000019_gtFine_labelIds.png'
+        label_visualize(img_dir)
+    """
     img = scipy.misc.imread(img_dir).astype(np.uint8)
     visual = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
 
@@ -186,6 +194,3 @@ def label_visualize(img_dir):
         visual[index + (2,)] = labels[i][2]
 
     scipy.misc.imsave('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/' + img_dir.split('/')[-1], visual)
-
-img_dir = '/home/andy/dataset/CITYSCAPES/gtFine_trainvaltest/gtFine/train/aachen/aachen_000000_000019_gtFine_labelIds.png'
-label_visualize(img_dir)

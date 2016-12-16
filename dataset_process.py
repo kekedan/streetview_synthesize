@@ -23,16 +23,64 @@ def store_single(filename, height , width, col_num, sel):
     scipy.misc.imsave(name + '_single.' + extension, sel_image)
 
 
-def crop_images(dataset_dir, is_mask=False):
+def crop_images(dataset_dir):
     """
     Read all images under the different folders
+    Crop, resize and store them
+    example code:
+        crop_images(CITYSCAPES_dir)
+    """
+    data = []
+    for folder in os.listdir(dataset_dir):
+        path = os.path.join(dataset_dir, folder, "*.png")
+        data.extend(glob(path))
+
+    for index, filePath in enumerate(data):
+        print ('{}/{}'.format(index, len(data)))
+
+        img = scipy.misc.imread(filePath).astype(np.uint8)
+        img = scipy.misc.imresize(img, 0.25, interp='bilinear', mode=None)
+        scipy.misc.imsave('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/image/' + filePath.split('/')[-1], img)
+        #break
+
+
+def crop_images_label(dataset_dir, is_mask=True):
+    """
+    Read all labels under the different folders
     Crop, resize and store them
     example code:
         crop_images(CITYSCAPES_dir, is_mask=True)
     """
     data = []
     for folder in os.listdir(dataset_dir):
-        path = os.path.join(dataset_dir, folder, "*_color.png")
+        path = os.path.join(dataset_dir, folder, "*_labelIds.png")
+        data.extend(glob(path))
+
+    for index, filePath in enumerate(data):
+        print ('{}/{}'.format(index, len(data)))
+
+        img = scipy.misc.imread(filePath).astype(np.uint8)
+        img = scipy.misc.imresize(img, 0.25, interp='bilinear', mode=None)
+        if is_mask:
+            mask = np.zeros((img.shape[0], img.shape[1]), dtype=np.bool_)
+
+            mask[np.nonzero(img == 24)] = True
+            img = mask
+
+        scipy.misc.imsave('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/label2/' + filePath.split('/')[-1], img)
+        #break
+
+
+def crop_images_color(dataset_dir, is_mask=True):
+    """
+    Read all labels under the different folders
+    Crop, resize and store them
+    example code:
+        crop_images(CITYSCAPES_dir, is_mask=True)
+    """
+    data = []
+    for folder in os.listdir(dataset_dir):
+        path = os.path.join(dataset_dir, folder, "*_labelIds.png")
         data.extend(glob(path))
 
     for index, filePath in enumerate(data):
@@ -55,7 +103,7 @@ def crop_images(dataset_dir, is_mask=False):
 
         #scipy.misc.imsave('/home/andy/dataset/CITYSCAPES/CITYSCAPES_crop_random/' + filePath.split('/')[-1],
         #                  img[offs_h[index]:offs_h_end[index], offs_w[index]:offs_w_end[index] :])
-        scipy.misc.imsave('/mnt/data/andy/dataset/CITYSCAPES/CITYSCAPES_crop_bottom_color/' + filePath.split('/')[-1],
+        scipy.misc.imsave('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/image/' + filePath.split('/')[-1],
                           img[0:192, :])
         #break
 

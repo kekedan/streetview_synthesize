@@ -243,3 +243,20 @@ def create_mask_img():
         scipy.misc.imsave('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/image_mask/mask_' + data[i].split('/')[-1], img)
         #scipy.misc.imsave('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/image_mask/' + label2[i].split('/')[-1], img)
 
+
+def create_merged_image(img_dir):
+    """
+    example code:
+        ddir = '/home/andy/dataset/CITYSCAPES/for_wonderful_chou/sel_mask_demo/exemplar_based'
+        create_merged_image(ddir)
+    :param img_dir:
+    :return:
+    """
+    data = sorted(glob(os.path.join(img_dir, "*.png")))
+    imgs = np.array([scipy.misc.imread(img)[0:192, :, :] for img in data]).astype(np.float32)
+    merged_img = merge(imgs, (2, 2))
+    scipy.misc.imsave(os.path.join(img_dir, 'merged.png'), merged_img)
+
+
+ddir = '/home/andy/dataset/CITYSCAPES/for_wonderful_chou/sel_mask_demo/exemplar_based'
+create_merged_image(ddir)

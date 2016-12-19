@@ -109,6 +109,35 @@ def crop_images_label(dataset_dir, is_mask=True):
         #break
 
 
+def crop_images_label_big(dataset_dir, is_mask=True):
+    """
+    Read all labels under the different folders
+    Crop, resize and store them
+    The mask range should be larger
+    example code:
+        ddir = '/home/andy/dataset/CITYSCAPES/gtFine_trainvaltest/gtFine/train'
+        crop_images_label(ddir, is_mask=True)
+    """
+    data = []
+    for folder in os.listdir(dataset_dir):
+        path = os.path.join(dataset_dir, folder, "*_labelIds.png")
+        data.extend(glob(path))
+
+    for index, filePath in enumerate(data):
+        print ('{}/{}'.format(index, len(data)))
+
+        img = scipy.misc.imread(filePath).astype(np.float32)
+        if is_mask:
+            mask = np.zeros((img.shape[0], img.shape[1]), dtype=np.float32)
+
+            mask[np.nonzero(img == 24)] = 255
+            img = mask
+
+        img = scipy.misc.imresize(img, 0.25, interp='bilinear', mode=None)
+        img[np.nonzero(img > 0)] = 255
+        scipy.misc.imsave('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/label2_big/' + filePath.split('/')[-1], img)
+
+
 def crop_images_color(dataset_dir, is_mask=True):
     """
     Read all labels under the different folders
@@ -194,3 +223,23 @@ def label_visualize(img_dir):
         visual[index + (2,)] = labels[i][2]
 
     scipy.misc.imsave('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/' + img_dir.split('/')[-1], visual)
+
+
+def create_mask_img():
+    data = sorted(glob(os.path.join('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/image', "*.png")))
+    label = sorted(glob(os.path.join('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/label2_big', "*.png")))
+
+    length = len(data)
+    for i in range(0, length):
+        print ('%d/%d' % (i, length))
+        #fileName = filePath.split('/')[-1].split('.')[0]
+        img = scipy.misc.imread(data[i]).astype(np.float)
+        label2 = scipy.misc.imread(label[i]).astype(np.int)
+
+        indices = np.nonzero(label2 == 255)
+        img[indices + (0,)] = 0
+        img[indices + (1,)] = 255
+        img[indices + (2,)] = 0
+        scipy.misc.imsave('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/image_mask/mask_' + data[i].split('/')[-1], img)
+        #scipy.misc.imsave('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/image_mask/' + label2[i].split('/')[-1], img)
+

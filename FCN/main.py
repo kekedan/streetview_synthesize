@@ -1,12 +1,10 @@
-import os
+import numpy as np
 import scipy as scp
 import scipy.misc
-
-import numpy as np
 import tensorflow as tf
-from glob import glob
-import loss
+
 import fcn32_vgg
+import loss
 
 flags = tf.app.flags
 

@@ -258,5 +258,5 @@ def create_merged_image(img_dir):
     scipy.misc.imsave(os.path.join(img_dir, 'merged.png'), merged_img)
 
 
-ddir = '/home/andy/dataset/CITYSCAPES/for_wonderful_chou/sel_mask_demo/exemplar_based'
+ddir = '/home/andy/dataset/CITYSCAPES/for_wonderful_chou/sel_mask_demo/per_plus_con'
 create_merged_image(ddir)

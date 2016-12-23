@@ -1,9 +1,12 @@
 from glob import glob
+import json
+from PIL import Image, ImageDraw
 import os
 
 from utils import *
 
-CITYSCAPES_dir = "/mnt/data/andy/dataset/CITYSCAPES/gtFine_trainvaltest/gtFine/train"
+CITYSCAPES_dir = '/mnt/data/andy/dataset/CITYSCAPES/leftImg8bit_trainvaltest/leftImg8bit/train'
+CITYSCAPES_label_dir = '/mnt/data/andy/dataset/CITYSCAPES/gtFine_trainvaltest/gtFine/train'
 labels = [
     (  0,  0,  0),
     (  0,  0,  0),
@@ -77,7 +80,7 @@ def crop_images(dataset_dir):
 
         img = scipy.misc.imread(filePath).astype(np.uint8)
         img = scipy.misc.imresize(img, 0.25, interp='bilinear', mode=None)
-        scipy.misc.imsave('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/image/' + filePath.split('/')[-1], img)
+        scipy.misc.imsave('/mnt/data/andy/dataset/CITYSCAPES/image/' + filePath.split('/')[-1], img)
         #break
 
 
@@ -86,8 +89,8 @@ def crop_images_label(dataset_dir, is_mask=True):
     Read all labels under the different folders
     Crop, resize and store them
     example code:
-        ddir = '/home/andy/dataset/CITYSCAPES/gtFine_trainvaltest/gtFine/train'
-        crop_images_label(ddir, is_mask=True)
+        ddir = CITYSCAPES_label_dir
+        crop_images_label(ddir, is_mask=False)
     """
     data = []
     for folder in os.listdir(dataset_dir):
@@ -105,7 +108,7 @@ def crop_images_label(dataset_dir, is_mask=True):
             mask[np.nonzero(img == 24)] = True
             img = mask
 
-        scipy.misc.imsave('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/label2/' + filePath.split('/')[-1], img)
+        scipy.misc.imsave('/mnt/data/andy/dataset/CITYSCAPES/label/' + filePath.split('/')[-1], img)
         #break
 
 
@@ -116,7 +119,7 @@ def crop_images_label_big(dataset_dir, is_mask=True):
     The mask range should be larger
     example code:
         ddir = '/home/andy/dataset/CITYSCAPES/gtFine_trainvaltest/gtFine/train'
-        crop_images_label(ddir, is_mask=True)
+        crop_images_label_big(ddir, is_mask=True)
     """
     data = []
     for folder in os.listdir(dataset_dir):
@@ -135,7 +138,8 @@ def crop_images_label_big(dataset_dir, is_mask=True):
 
         img = scipy.misc.imresize(img, 0.25, interp='bilinear', mode=None)
         img[np.nonzero(img > 0)] = 255
-        scipy.misc.imsave('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/label2_big/' + filePath.split('/')[-1], img)
+        scipy.misc.imsave('/mnt/data/andy/dataset/CITYSCAPES/mask/' + filePath.split('/')[-1], img)
+        #break
 
 
 def crop_images_color(dataset_dir, is_mask=True):
@@ -222,7 +226,7 @@ def label_visualize(img_dir):
         visual[index + (1,)] = labels[i][1]
         visual[index + (2,)] = labels[i][2]
 
-    scipy.misc.imsave('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/' + img_dir.split('/')[-1], visual)
+    scipy.misc.imsave('/mnt/data/andy/dataset/CITYSCAPES/label' + img_dir.split('/')[-1], visual)
 
 
 def create_mask_img():
@@ -258,5 +262,64 @@ def create_merged_image(img_dir):
     scipy.misc.imsave(os.path.join(img_dir, 'merged.png'), merged_img)
 
 
-ddir = '/home/andy/dataset/CITYSCAPES/for_wonderful_chou/sel_mask_demo/per_plus_con'
-create_merged_image(ddir)
+def create_instance_label():
+    data = []
+    for folder in os.listdir(CITYSCAPES_label_dir):
+        path = os.path.join(CITYSCAPES_label_dir, folder, "*.json")
+        data.extend(glob(path))
+
+    data = ['/mnt/data/andy/dataset/CITYSCAPES/gtFine_trainvaltest/gtFine/train/strasbourg/strasbourg_000000_015602_gtFine_polygons.json']
+
+    length = len(data)
+
+    for i in range(0, length):
+        print ('%d/%d' % (i, length))
+        with open(data[i]) as data_file:
+            label_instance = json.load(data_file)
+            data_file.close()
+
+        objects = label_instance['objects']
+        instanceNum = 0
+        for object in objects:
+            if object['label'] == 'person':
+                #print(object['polygon'])
+                polygon = [tuple(poly) for poly in object['polygon']]
+                img = Image.new('L', (2048, 1024), 0)
+                ImageDraw.Draw(img).polygon(polygon, outline=1, fill=1)
+                img = scipy.misc.imresize(img, 0.25, interp='bilinear', mode=None)
+                mask = np.array(img) * 255
+                scipy.misc.imsave('/mnt/data/andy/dataset/CITYSCAPES/instance/' + data[i].split('/')[-1].split('.')[0]
+                                  + '_{}_.png'.format(instanceNum), mask)
+                instanceNum += 1
+
+        #for key, value in sorted(label_instance.items()):
+        #    print(key)
+
+
+def create_mask_img_instance():
+    data = sorted(glob(os.path.join('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/image', "*.png")))
+    label = sorted(glob(os.path.join('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/label2_big', "*.png")))
+
+    data = ['/mnt/data/andy/dataset/CITYSCAPES/sel_mask_demo/ori/strasbourg_000000_015602_leftImg8bit.png']
+    label = sorted(glob(os.path.join('/mnt/data/andy/dataset/CITYSCAPES/instance', "*.png")))
+
+    length = len(data)
+    for i in range(0, length):
+        print ('%d/%d' % (i, length))
+        #fileName = filePath.split('/')[-1].split('.')[0]
+        image = scipy.misc.imread(data[i]).astype(np.float)
+        numInstance = 0
+        for instance in label:
+            label2 = scipy.misc.imread(instance).astype(np.int)
+
+            img = np.copy(image)
+            indices = np.nonzero(label2 == 255)
+            img[indices + (0,)] = 0
+            img[indices + (1,)] = 255
+            img[indices + (2,)] = 0
+            scipy.misc.imsave('/mnt/data/andy/dataset/CITYSCAPES/image_mask_instance/mask_{}_'.format(numInstance)
+                              + data[i].split('/')[-1], img)
+            numInstance += 1
+
+
+create_mask_img_instance()

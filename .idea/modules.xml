@@ -2,6 +2,8 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/../FCN.tensorflow/.idea/FCN.tensorflow.iml" filepath="$PROJECT_DIR$/../FCN.tensorflow/.idea/FCN.tensorflow.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../streetview/.idea/streetview.iml" filepath="$PROJECT_DIR$/../streetview/.idea/streetview.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/streetview_synthesize.iml" filepath="$PROJECT_DIR$/.idea/streetview_synthesize.iml" />
     </modules>
   </component>

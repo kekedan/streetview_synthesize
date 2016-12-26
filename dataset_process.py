@@ -226,7 +226,7 @@ def label_visualize(img_dir):
         visual[index + (1,)] = labels[i][1]
         visual[index + (2,)] = labels[i][2]
 
-    scipy.misc.imsave('/mnt/data/andy/dataset/CITYSCAPES/label' + img_dir.split('/')[-1], visual)
+    scipy.misc.imsave('./' + img_dir.split('/')[-1], visual)
 
 
 def create_mask_img():
@@ -322,4 +322,5 @@ def create_mask_img_instance():
             numInstance += 1
 
 
-create_mask_img_instance()
+img_dir = '/home/andy/Documents/Github/streetview_synthesize/FCN/gt_5.png'
+label_visualize(img_dir)

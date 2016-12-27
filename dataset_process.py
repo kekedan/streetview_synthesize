@@ -1,6 +1,7 @@
 from glob import glob
 import json
 from PIL import Image, ImageDraw
+import pickle
 import os
 
 from utils import *
@@ -322,5 +323,45 @@ def create_mask_img_instance():
             numInstance += 1
 
 
-img_dir = '/home/andy/Documents/Github/streetview_synthesize/FCN/gt_5.png'
-label_visualize(img_dir)
+def select_human_img():
+    alpha = 0.01
+    data_set_dir = '/data/vllab1/dataset/CITYSCAPES/CITY/mask'
+    data_set_image_dir = '/data/vllab1/dataset/CITYSCAPES/CITY/image'
+    data = sorted(glob(os.path.join(data_set_dir, "*.png")))
+    data_image = sorted(glob(os.path.join(data_set_image_dir, "*.png")))
+    selected = []
+    for index, filePath in enumerate(data):
+        print ('%d/%d' % (index, len(data)))
+        img = scipy.misc.imread(filePath)
+        img_data = scipy.misc.imread(data_image[index])
+        human_pixel = np.nonzero(img == 255)
+        human_ratio = float(len(human_pixel[0])) / float((img.shape[0] * img.shape[1]))
+        if human_ratio > alpha:
+            full_name = filePath.split('/')[-1].split('_')
+            name = '{}_{}_{}'.format(full_name[0], full_name[1], full_name[2])
+            selected.append(name)
+            #scipy.misc.imsave('/data/vllab1/dataset/CITYSCAPES/CITY/human_mask/{}'.format(filePath.split('/')[-1]), img)
+            #scipy.misc.imsave('/data/vllab1/dataset/CITYSCAPES/CITY/human_image/{}'.format(data_image[index].split('/')[-1]), img_data)
+
+    file_obj = open('human_fileName', 'wb')
+    pickle.dump(selected, file_obj)
+    file_obj.close()
+    print len(selected)
+
+
+def load_image_with_name():
+    dataset_dir = '/data/vllab1/dataset/CITYSCAPES/CITY'
+    file_obj = open('human_fileName', 'r')
+    human_file_name = pickle.load(file_obj)
+    for index in range(0, len(human_file_name)):
+        name = human_file_name[index]
+        image_name = '{}_leftImg8bit.png'.format(name)
+        mask_name = '{}_gtFine_labelIds.png'.format(name)
+
+        image = scipy.misc.imread(os.path.join(dataset_dir, 'image', image_name))
+        mask = scipy.misc.imread(os.path.join(dataset_dir, 'mask', mask_name))
+        scipy.misc.imsave(image_name, image)
+        scipy.misc.imsave(mask_name, mask)
+        break
+
+load_image_with_name()

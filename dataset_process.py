@@ -219,6 +219,7 @@ def label_visualize(img_dir):
         label_visualize(img_dir)
     """
     img = scipy.misc.imread(img_dir).astype(np.uint8)
+    yo = np.nonzero(img == 1)
     visual = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
 
     for i in range(0, 34):
@@ -229,6 +230,8 @@ def label_visualize(img_dir):
 
     scipy.misc.imsave('./' + img_dir.split('/')[-1], visual)
 
+
+label_visualize('/data/vllab1/checkpoint/FCN/pred_5.png')
 
 def create_mask_img():
     data = sorted(glob(os.path.join('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/image', "*.png")))
@@ -363,5 +366,3 @@ def load_image_with_name():
         scipy.misc.imsave(image_name, image)
         scipy.misc.imsave(mask_name, mask)
         break
-
-load_image_with_name()

@@ -9,12 +9,12 @@ import TensorflowUtils as utils
 from six.moves import xrange
 
 FLAGS = tf.flags.FLAGS
-tf.flags.DEFINE_string("data_dir", "/home/andy/dataset/CITYSCAPES/for_wonderful_chou/image/", "path to dataset")
-tf.flags.DEFINE_string("label_dir", "/home/andy/dataset/CITYSCAPES/for_wonderful_chou/label/", "path to annotation")
-tf.flags.DEFINE_string("model_dir", "/home/andy/checkpoint/CITYSCAPES/", "Path to vgg model mat")
-tf.flags.DEFINE_string("logs_dir", "logs/", "path to logs directory")
+tf.flags.DEFINE_string("data_dir", "/data/vllab1/dataset/CITYSCAPES/CITY/image", "path to dataset")
+tf.flags.DEFINE_string("label_dir", "/data/vllab1/dataset/CITYSCAPES/CITY/label", "path to annotation")
+tf.flags.DEFINE_string("model_dir", "/data/vllab1/checkpoint/", "Path to vgg model mat")
+tf.flags.DEFINE_string("logs_dir", "/data/vllab1/checkpoint/FCN/semantic/", "path to logs directory")
 
-tf.flags.DEFINE_integer("batch_size", "1", "batch size for training")
+tf.flags.DEFINE_integer("batch_size", "2", "batch size for training")
 tf.flags.DEFINE_float("learning_rate", "1e-4", "Learning rate for Adam Optimizer")
 tf.flags.DEFINE_bool('debug', "False", "Debug mode: True/ False")
 tf.flags.DEFINE_string('mode', "train", "Mode train/ test/ visualize")
@@ -73,8 +73,8 @@ def inference(image, keep_prob):
     :return:
     """
     print("setting up vgg initialized conv layers ...")
-    # model_data = utils.get_model_data(FLAGS.model_dir, MODEL_URL)
-    model_data = scipy.io.loadmat('imagenet-vgg-verydeep-19.mat')
+    #model_data = utils.get_model_data(FLAGS.model_dir, MODEL_URL)
+    model_data = scipy.io.loadmat(os.path.join(FLAGS.model_dir, 'imagenet-vgg-verydeep-19.mat'))
 
     mean = model_data['normalization'][0][0][0]
     mean_pixel = np.mean(mean, axis=(0, 1))
@@ -168,7 +168,7 @@ def main(argv=None):
     '''
     print("Setting up image reader...")
     train_records, valid_records = scene_parsing.read_dataset(FLAGS.data_dir)
-    print(len(train_records))
+    print(len(train_records))t
     print(len(valid_records))
 
     print("Setting up dataset reader")
@@ -177,8 +177,11 @@ def main(argv=None):
         train_dataset_reader = dataset.BatchDatset(train_records, image_options)
     validation_dataset_reader = dataset.BatchDatset(valid_records, image_options)
     '''
-    data = glob(os.path.join(FLAGS.data_dir, "*.png"))
-    annotation = glob(os.path.join(FLAGS.label_dir, "*.png"))
+    # TODO next batch
+    # TODO file name
+    # TODO suffle and cycle
+    data = sorted(glob(os.path.join(FLAGS.data_dir, "*.png")))
+    label = sorted(glob(os.path.join(FLAGS.label_dir, "*.png")))
 
     sess = tf.Session()
 
@@ -186,32 +189,45 @@ def main(argv=None):
     saver = tf.train.Saver()
     # summary_writer = tf.train.SummaryWriter(FLAGS.logs_dir, sess.graph)
 
-    sess.run(tf.initialize_all_variables())
+    sess.run(tf.global_variables_initializer())
     ckpt = tf.train.get_checkpoint_state(FLAGS.logs_dir)
     if ckpt and ckpt.model_checkpoint_path:
         saver.restore(sess, ckpt.model_checkpoint_path)
-        print("Model restored...")
+        print("Model restored...{}".format(ckpt.model_checkpoint_path))
 
     if FLAGS.mode == "train":
         for itr in xrange(MAX_ITERATION):
             train_images_name = data[itr * FLAGS.batch_size:(itr + 1) * FLAGS.batch_size]
-            train_annotations_name = annotation[itr * FLAGS.batch_size:(itr + 1) * FLAGS.batch_size]
+            train_annotations_name = label[itr * FLAGS.batch_size:(itr + 1) * FLAGS.batch_size]
 
             train_images = [scipy.misc.imread(train_image_name).astype(np.uint8)
-                            for train_image_name in train_images_name]
+                                    for train_image_name in train_images_name]
 
             train_annotations = [scipy.misc.imread(train_annotation_name).astype(np.uint8)
-                                 for train_annotation_name in train_annotations_name]
-            # train_images, train_annotations = train_dataset_reader.next_batch(FLAGS.batch_size)
+                                         for train_annotation_name in train_annotations_name]
 
+            # train_images, train_annotations = traitn_dataset_reader.next_batch(FLAGS.batch_size)
             feed_dict = {image: train_images, annotation: train_annotations, keep_probability: 0.85}
 
             sess.run(train_op, feed_dict=feed_dict)
 
-            if itr % 10 == 0:
+            if itr % 5 == 0:
                 # train_loss, summary_str = sess.run([loss, summary_op], feed_dict=feed_dict)
                 train_loss = sess.run(loss, feed_dict=feed_dict)
                 print("Step: %d, Train_loss:%g" % (itr, train_loss))
+                # summary_writer.add_summary(summary_str, itr)
+
+            if itr % 50 == 0:
+                # train_loss, summary_str = sess.run([loss, summary_op], feed_dict=feed_dict)
+                scipy.misc.imsave('logs/{:d}_image.png'.format(itr), train_images[0].astype(np.uint8))
+                scipy.misc.imsave('logs/{:d}_gt.png'.format(itr),
+                                  utils.label_visualize(train_annotations[0].astype(np.uint8)))
+
+                pred = sess.run(pred_annotation, feed_dict={image: train_images, annotation: train_annotations,
+                                                            keep_probability: 1.0})
+
+                pred = np.squeeze(pred, axis=3)
+                scipy.misc.imsave('logs/{:d}_pred.png'.format(itr), utils.label_visualize(pred[0].astype(np.uint8)))
                 # summary_writer.add_summary(summary_str, itr)
 
             if itr % 300 == 0:
@@ -219,29 +235,29 @@ def main(argv=None):
                 # valid_loss = sess.run(loss, feed_dict={image: valid_images, annotation: valid_annotations,
                 #                                       keep_probability: 1.0})
                 # print("%s ---> Validation_loss: %g" % (datetime.datetime.now(), valid_loss))
+                print('checkpoint')
                 saver.save(sess, FLAGS.logs_dir + "model.ckpt", itr)
-                pass
 
     elif FLAGS.mode == "visualize":
         # valid_images, valid_annotations = validation_dataset_reader.get_random_batch(FLAGS.batch_size)
-        train_images = scipy.misc.imread(
-            '/home/andy/dataset/CITYSCAPES/for_wonderful_chou/image/aachen_000045_000019_leftImg8bit.png').astype(
+        train_images = scipy.misc.imread('/data/vllab1/Github/streetview_synthesize/aachen_000009_000019_leftImg8bit.png').astype(
             np.uint8)
-        train_annotations = scipy.misc.imread(
-            '/home/andy/dataset/CITYSCAPES/for_wonderful_chou/label/aachen_000045_000019_gtFine_labelIds.png').astype(
+        train_annotations = scipy.misc.imread('/data/vllab1/Github/streetview_synthesize/aachen_000009_000019_gtFine_labelIds.png').astype(
             np.uint8)
         valid_images = [train_images]
-        valid_annotations = [np.expand_dims(train_annotations, axis=3)]
+        #valid_annotations = [np.expand_dims(train_annotations, axis=3)]
+        valid_annotations = [train_annotations]
 
         pred = sess.run(pred_annotation, feed_dict={image: valid_images, annotation: valid_annotations,
                                                     keep_probability: 1.0})
-        valid_annotations = [np.squeeze(valid_annotations, axis=3)]
+        #valid_annotations = [np.squeeze(valid_annotations, axis=3)]
         pred = np.squeeze(pred, axis=3)
 
         for itr in range(FLAGS.batch_size):
             scipy.misc.imsave("inp_" + str(5 + itr) + '.png', valid_images[itr].astype(np.uint8))
             scipy.misc.imsave("gt_" + str(5 + itr) + '.png', valid_annotations[itr].astype(np.uint8))
-            utils.save_image(pred[itr].astype(np.uint8), FLAGS.logs_dir, name="pred_" + str(5 + itr))
+            scipy.misc.imsave("pred_" + str(5 + itr) + '.png', pred[itr].astype(np.uint8) * 255)
+            #utils.save_image(pred[itr].astype(np.uint8), FLAGS.logs_dir, name="pred_" + str(5 + itr))
             print("Saved image: %d" % itr)
 
 

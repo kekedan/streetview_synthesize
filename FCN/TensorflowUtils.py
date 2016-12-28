@@ -8,6 +8,63 @@ from six.moves import urllib
 import tarfile
 import zipfile
 import scipy.io
+labels = [
+    (  0,  0,  0),
+    (  0,  0,  0),
+    (  0,  0,  0),
+    (  0,  0,  0),
+    (  0,  0,  0),
+    (111, 74,  0),
+    ( 81,  0, 81),
+    (128, 64,128),
+    (244, 35,232),
+    (250,170,160),
+    (230,150,140),
+    ( 70, 70, 70),
+    (102,102,156),
+    (190,153,153),
+    (180,165,180),
+    (150,100,100),
+    (150,120, 90),
+    (153,153,153),
+    (153,153,153),
+    (250,170, 30),
+    (220,220,  0),
+    (107,142, 35),
+    (152,251,152),
+    ( 70,130,180),
+    (220, 20, 60),
+    (255,  0,  0),
+    (  0,  0,142),
+    (  0,  0, 70),
+    (  0, 60,100),
+    (  0,  0, 90),
+    (  0,  0,110),
+    (  0, 80,100),
+    (  0,  0,230),
+    (119, 11, 32),
+    (  0,  0,142)
+]
+
+
+def label_visualize(img):
+    """
+    transfer label image to color image
+    :param img_dir: dir of the image
+    :return: visualization
+    example code:
+        img_dir = '/home/andy/dataset/CITYSCAPES/for_wonderful_chou/label/aachen_000051_000019_gtFine_labelIds.png'
+        label_visualize(img_dir)
+    """
+    visual = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
+
+    for i in range(0, 34):
+        index = np.nonzero(img == i)
+        visual[index + (0,)] = labels[i][0]
+        visual[index + (1,)] = labels[i][1]
+        visual[index + (2,)] = labels[i][2]
+
+    return visual
 
 
 def get_model_data(dir_path, model_url):

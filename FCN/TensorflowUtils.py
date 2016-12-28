@@ -47,6 +47,24 @@ labels = [
 ]
 
 
+def merge(images, size, is_gray=False):
+    h, w = images.shape[1], images.shape[2]
+    if is_gray:
+        img = np.zeros((int(h * size[0]), int(w * size[1])))
+        for idx, image in enumerate(images):
+            i = int(idx % size[1])
+            j = int(idx // size[1])
+            img[j*h:j*h+h, i*w:i*w+w] = image
+    else:
+        img = np.zeros((int(h * size[0]), int(w * size[1]), 3))
+        for idx, image in enumerate(images):
+            i = int(idx % size[1])
+            j = int(idx // size[1])
+            img[j*h:j*h+h, i*w:i*w+w, :] = image
+
+    return img
+
+
 def label_visualize(img):
     """
     transfer label image to color image

@@ -12,9 +12,9 @@ FLAGS = tf.flags.FLAGS
 tf.flags.DEFINE_string("data_dir", "/data/vllab1/dataset/CITYSCAPES/CITY/image", "path to dataset")
 tf.flags.DEFINE_string("label_dir", "/data/vllab1/dataset/CITYSCAPES/CITY/label", "path to annotation")
 tf.flags.DEFINE_string("model_dir", "/data/vllab1/checkpoint/", "Path to vgg model mat")
-tf.flags.DEFINE_string("logs_dir", "/data/vllab1/checkpoint/FCN/single/", "path to logs directory")
+tf.flags.DEFINE_string("logs_dir", "/data/vllab1/checkpoint/FCN/semantic/", "path to logs directory")
 
-tf.flags.DEFINE_integer("batch_size", "1", "batch size for training")
+tf.flags.DEFINE_integer("batch_size", "4", "batch size for training")
 tf.flags.DEFINE_float("learning_rate", "1e-4", "Learning rate for Adam Optimizer")
 tf.flags.DEFINE_bool('debug', "False", "Debug mode: True/ False")
 tf.flags.DEFINE_string('mode', "train", "Mode train/ test/ visualize")
@@ -23,6 +23,7 @@ MODEL_URL = 'http://www.vlfeat.org/matconvnet/models/beta16/imagenet-vgg-verydee
 
 MAX_ITERATION = int(1e5 + 1)
 NUM_OF_CLASSESS = 34
+SAMPLE_SHAPE = (2, 2)
 IMAGE_SIZE_h = 256
 IMAGE_SIZE_w = 512
 
@@ -181,13 +182,13 @@ def main(argv=None):
     validation_dataset_reader = dataset.BatchDatset(valid_records, image_options)
     '''
 
-    data = sorted(glob(os.path.join(FLAGS.data_dir, "*.png")))[0:1]
-    label = sorted(glob(os.path.join(FLAGS.label_dir, "*.png")))[0:1]
+    data = sorted(glob(os.path.join(FLAGS.data_dir, "*.png")))
+    label = sorted(glob(os.path.join(FLAGS.label_dir, "*.png")))
     train_size = len(data)
-    sess = tf.Session()
-    # TODO next batch
-    # TODO file name
-    # TODO suffle and cycle
+
+    gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=1)
+    sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
+    # TODO next batch file name suffle
 
     print("Setting up Saver...")
     saver = tf.train.Saver()
@@ -218,26 +219,28 @@ def main(argv=None):
                 sess.run(train_op, feed_dict=feed_dict)
 
                 step = epoch * train_size + batch_itr
-                if step % 5 == 0:
+                if step % 50 == 0:
                     # train_loss, summary_str = sess.run([loss, summary_op], feed_dict=feed_dict)
                     train_loss = sess.run(loss, feed_dict=feed_dict)
                     print("Step: %d, Train_loss:%g" % (step, train_loss))
                     # summary_writer.add_summary(summary_str, step)
 
-                if step % 50 == 0:
+                if step % 500 == 0:
                     # train_loss, summary_str = sess.run([loss, summary_op], feed_dict=feed_dict)
-                    scipy.misc.imsave('logs/{:d}_image.png'.format(step), train_images[0].astype(np.uint8))
-                    scipy.misc.imsave('logs/{:d}_gt.png'.format(step),
-                                      utils.label_visualize(train_annotations[0].astype(np.uint8)))
+                    scipy.misc.imsave('logs/{:d}_image.png'.format(step), utils.merge(
+                        np.array(train_images), SAMPLE_SHAPE))
+                    scipy.misc.imsave('logs/{:d}_gt.png'.format(step), utils.label_visualize(utils.merge(
+                        np.array(train_annotations), SAMPLE_SHAPE, is_gray=True)))
 
                     pred = sess.run(pred_annotation, feed_dict={image: train_images, annotation: train_annotations,
                                                                 keep_probability: 1.0})
 
                     pred = np.squeeze(pred, axis=3)
-                    scipy.misc.imsave('logs/{:d}_pred.png'.format(step), utils.label_visualize(pred[0].astype(np.uint8)))
+                    scipy.misc.imsave('logs/{:d}_pred.png'.format(step), utils.label_visualize(
+                        utils.merge(pred, SAMPLE_SHAPE, is_gray=True)))
                     # summary_writer.add_summary(summary_str, step)
 
-                if step % 300 == 0:
+                if step % 1000 == 0:
                     # valid_images, valid_annotations = validation_dataset_reader.next_batch(FLAGS.batch_size)
                     # valid_loss = sess.run(loss, feed_dict={image: valid_images, annotation: valid_annotations,
                     #                                       keep_probability: 1.0})

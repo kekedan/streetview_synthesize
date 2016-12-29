@@ -85,6 +85,19 @@ def label_visualize(img):
     return visual
 
 
+def heatmap_visualize(img):
+    """
+    transfer label image to color image
+    :param img_dir: dir of the image
+    :return: visualization
+    example code:
+        img_dir = '/home/andy/dataset/CITYSCAPES/for_wonderful_chou/label/aachen_000051_000019_gtFine_labelIds.png'
+        label_visualize(img_dir)
+    """
+    visual = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
+
+    return img
+
 def get_model_data(dir_path, model_url):
     maybe_download_and_extract(dir_path, model_url)
     filename = model_url.split("/")[-1]

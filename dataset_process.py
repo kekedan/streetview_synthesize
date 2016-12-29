@@ -231,8 +231,6 @@ def label_visualize(img_dir):
     scipy.misc.imsave('./' + img_dir.split('/')[-1], visual)
 
 
-label_visualize('/data/vllab1/checkpoint/FCN/pred_5.png')
-
 def create_mask_img():
     data = sorted(glob(os.path.join('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/image', "*.png")))
     label = sorted(glob(os.path.join('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/label2_big', "*.png")))
@@ -266,38 +264,59 @@ def create_merged_image(img_dir):
     scipy.misc.imsave(os.path.join(img_dir, 'merged.png'), merged_img)
 
 
-def create_instance_label():
-    data = []
-    for folder in os.listdir(CITYSCAPES_label_dir):
-        path = os.path.join(CITYSCAPES_label_dir, folder, "*.json")
-        data.extend(glob(path))
+def create_instance():
+    alpha = 0.01
+    dataset_dir = '/data/vllab1/dataset/CITYSCAPES/CITY'
+    file_obj = open('human_fileName_new', 'r')
+    human_file_name = pickle.load(file_obj)
+    length = len(human_file_name)
 
-    data = ['/mnt/data/andy/dataset/CITYSCAPES/gtFine_trainvaltest/gtFine/train/strasbourg/strasbourg_000000_015602_gtFine_polygons.json']
+    for index in range(0, length):
+        name = human_file_name[index]
+        print ('%d/%d : %s' % (index, length, name))
+        image_name = '{}_leftImg8bit.png'.format(name)
+        instance_name = '{}_gtFine_polygons.json'.format(name)
+        city_name = instance_name.split('_', 1)[0]
 
-    length = len(data)
+        image = scipy.misc.imread(os.path.join(dataset_dir, 'human_new_image', image_name))
+        instance = (os.path.join('/data/vllab1/dataset/CITYSCAPES/gtFine_trainvaltest/gtFine/train',
+                                 city_name, instance_name))
 
-    for i in range(0, length):
-        print ('%d/%d' % (i, length))
-        with open(data[i]) as data_file:
+        with open(instance) as data_file:
             label_instance = json.load(data_file)
             data_file.close()
 
         objects = label_instance['objects']
-        instanceNum = 0
-        for object in objects:
-            if object['label'] == 'person':
+        instance_num = 0
+        for obj in objects:
+            if obj['label'] == 'person':
                 #print(object['polygon'])
-                polygon = [tuple(poly) for poly in object['polygon']]
+                polygon = [tuple(poly) for poly in obj['polygon']]
                 img = Image.new('L', (2048, 1024), 0)
                 ImageDraw.Draw(img).polygon(polygon, outline=1, fill=1)
                 img = scipy.misc.imresize(img, 0.25, interp='bilinear', mode=None)
                 mask = np.array(img) * 255
-                scipy.misc.imsave('/mnt/data/andy/dataset/CITYSCAPES/instance/' + data[i].split('/')[-1].split('.')[0]
-                                  + '_{}_.png'.format(instanceNum), mask)
-                instanceNum += 1
+
+                human_pixel = np.nonzero(mask == 255)
+                human_ratio = float(len(human_pixel[0])) / float((img.shape[0] * img.shape[1]))
+                print('instance: {:d}, ratio:{:f}'.format(instance_num, human_ratio))
+                if human_ratio > alpha:
+                    scipy.misc.imsave('/data/vllab1/dataset/CITYSCAPES/CITY/human_new_instance/{}_{:d}.png'.format(
+                        image_name.split('.')[0], instance_num), mask)
+
+                    img = np.copy(image)
+                    img[human_pixel + (0,)] = 0
+                    img[human_pixel + (1,)] = 255
+                    img[human_pixel + (2,)] = 0
+                    scipy.misc.imsave('/data/vllab1/dataset/CITYSCAPES/CITY/human_new_instance_mask/{}_{:d}.png'.format(
+                        image_name.split('.')[0], instance_num), img)
+
+                    instance_num += 1
 
         #for key, value in sorted(label_instance.items()):
         #    print(key)
+
+create_instance()
 
 
 def create_mask_img_instance():
@@ -327,7 +346,7 @@ def create_mask_img_instance():
 
 
 def select_human_img():
-    alpha = 0.01
+    alpha = 0.05 # [0.001]
     data_set_dir = '/data/vllab1/dataset/CITYSCAPES/CITY/mask'
     data_set_image_dir = '/data/vllab1/dataset/CITYSCAPES/CITY/image'
     data = sorted(glob(os.path.join(data_set_dir, "*.png")))
@@ -343,10 +362,10 @@ def select_human_img():
             full_name = filePath.split('/')[-1].split('_')
             name = '{}_{}_{}'.format(full_name[0], full_name[1], full_name[2])
             selected.append(name)
-            #scipy.misc.imsave('/data/vllab1/dataset/CITYSCAPES/CITY/human_mask/{}'.format(filePath.split('/')[-1]), img)
-            #scipy.misc.imsave('/data/vllab1/dataset/CITYSCAPES/CITY/human_image/{}'.format(data_image[index].split('/')[-1]), img_data)
+            #scipy.misc.imsave('/data/vllab1/dataset/CITYSCAPES/CITY/human_mask_new/{}'.format(filePath.split('/')[-1]), img)
+            #scipy.misc.imsave('/data/vllab1/dataset/CITYSCAPES/CITY/human_image_new/{}'.format(data_image[index].split('/')[-1]), img_data)
 
-    file_obj = open('human_fileName', 'wb')
+    file_obj = open('human_fileName_new', 'wb')
     pickle.dump(selected, file_obj)
     file_obj.close()
     print len(selected)

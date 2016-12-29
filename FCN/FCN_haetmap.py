@@ -12,7 +12,7 @@ FLAGS = tf.flags.FLAGS
 tf.flags.DEFINE_string("data_dir", "/data/vllab1/dataset/CITYSCAPES/CITY/human_image", "path to dataset")
 tf.flags.DEFINE_string("label_dir", "/data/vllab1/dataset/CITYSCAPES/CITY/human_mask", "path to annotation")
 tf.flags.DEFINE_string("model_dir", "/data/vllab1/checkpoint/", "Path to vgg model mat")
-tf.flags.DEFINE_string("logs_dir", "/data/vllab1/checkpoint/FCN/heatmap/", "path to logs directory")
+tf.flags.DEFINE_string("logs_dir", "/data/vllab1/checkpoint/FCN/heatmap_new_loss/", "path to logs directory")
 
 tf.flags.DEFINE_integer("batch_size", "4", "batch size for training")
 tf.flags.DEFINE_float("learning_rate", "1e-4", "Learning rate for Adam Optimizer")

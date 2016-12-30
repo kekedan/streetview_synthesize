@@ -9,10 +9,10 @@ import TensorflowUtils as utils
 from six.moves import xrange
 
 FLAGS = tf.flags.FLAGS
-tf.flags.DEFINE_string("data_dir", "/data/vllab1/dataset/CITYSCAPES/CITY/human_image", "path to dataset")
-tf.flags.DEFINE_string("label_dir", "/data/vllab1/dataset/CITYSCAPES/CITY/human_mask", "path to annotation")
+tf.flags.DEFINE_string("data_dir", "/data/vllab1/dataset/CITYSCAPES/CITY/image_inpainting_instance", "path to dataset")
+tf.flags.DEFINE_string("label_dir", "/data/vllab1/dataset/CITYSCAPES/CITY/human_new_instance", "path to annotation")
 tf.flags.DEFINE_string("model_dir", "/data/vllab1/checkpoint/", "Path to vgg model mat")
-tf.flags.DEFINE_string("logs_dir", "/data/vllab1/checkpoint/FCN/heatmap_new_loss/", "path to logs directory")
+tf.flags.DEFINE_string("logs_dir", "/data/vllab1/checkpoint/FCN/heatmap_instance/", "path to logs directory")
 
 tf.flags.DEFINE_integer("batch_size", "4", "batch size for training")
 tf.flags.DEFINE_float("learning_rate", "1e-4", "Learning rate for Adam Optimizer")
@@ -151,16 +151,16 @@ def main(argv=None):
 
     keep_probability = tf.placeholder(tf.float32, name="keep_probabilty")
     image = tf.placeholder(tf.float32, shape=[None, IMAGE_SIZE_h, IMAGE_SIZE_w, 3], name="input_image")
-    annotation = tf.placeholder(tf.int32, shape=[None, IMAGE_SIZE_h, IMAGE_SIZE_w, 2], name="annotation")
+    annotation = tf.placeholder(tf.int32, shape=[None, IMAGE_SIZE_h, IMAGE_SIZE_w], name="annotation")
 
     pred_annotation, logits = inference(image, keep_probability)
     # tf.image_summary("input_image", image, max_images=2)
     # tf.image_summary("ground_truth", tf.cast(annotation, tf.uint8), max_images=2)
     # tf.image_summary("pred_annotation", tf.cast(pred_annotation, tf.uint8), max_images=2)
-    loss = tf.reduce_mean((tf.nn.sparse_softmax_cross_entropy_with_logits(logits, annotation[:, :, :, 1])))
-    loss_bg = tf.reduce_mean((tf.contrib.losses.mean_squared_error(logits[:, :, :, 0], annotation[:, :, :, 0])))
-    loss_fg = tf.reduce_mean((tf.contrib.losses.mean_squared_error(logits[:, :, :, 1], annotation[:, :, :, 1])))
-    loss_new = 0.25 * loss_bg + loss_fg
+    loss = tf.reduce_mean((tf.nn.sparse_softmax_cross_entropy_with_logits(logits, annotation)))
+    #loss_bg = tf.reduce_mean((tf.contrib.losses.mean_squared_error(logits[:, :, :, 0], annotation[:, :, :, 0])))
+    #loss_fg = tf.reduce_mean((tf.contrib.losses.mean_squared_error(logits[:, :, :, 1], annotation[:, :, :, 1])))
+    #loss_new = 0.25 * loss_bg + loss_fg
     # tf.scalar_summary("entropy", loss)
 
     trainable_var = tf.trainable_variables()
@@ -169,7 +169,7 @@ def main(argv=None):
             utils.add_to_regularization_and_summary(var)
 
     # TODO new loss
-    train_op = train(loss_fg, trainable_var)
+    train_op = train(loss, trainable_var)
 
     # print("Setting up summary op...")
     # summary_op = tf.merge_all_summaries()
@@ -216,8 +216,7 @@ def main(argv=None):
                                         for train_image_name in train_images_name]
 
                 # Is this the normal way?
-                train_annotations = [np.dstack((1 - scipy.misc.imread(train_annotation_name).astype(np.uint8) / 255,
-                                                scipy.misc.imread(train_annotation_name).astype(np.uint8) / 255))
+                train_annotations = [scipy.misc.imread(train_annotation_name).astype(np.uint8) / 255
                                              for train_annotation_name in train_annotations_name]
 
                 # train_images, train_annotations = traitn_dataset_reader.next_batch(FLAGS.batch_size)
@@ -226,21 +225,18 @@ def main(argv=None):
                 sess.run(train_op, feed_dict=feed_dict)
 
                 step = epoch * train_size + batch_itr
-                if step % 50 == 0:
+                if step % 5 == 0:
                     # train_loss, summary_str = sess.run([loss, summary_op], feed_dict=feed_dict)
-                    train_loss_new, train_loss, train_loss_bg, train_loss_fg = sess.run([loss_new, loss, loss_bg, loss_fg], feed_dict=feed_dict)
-                    print("Step: %d, Train_loss_new:%g, Train_loss:%g, Train_loss_bg:%g, Train_loss_fg:%g" %
-                          (step, train_loss_new, train_loss, train_loss_bg, train_loss_fg))
+                    train_loss = sess.run(loss, feed_dict=feed_dict)
+                    print("Step: %d, Train_loss:%g" % (step, train_loss))
                     # summary_writer.add_summary(summary_str, step)
 
-                if step % 500 == 0:
+                if step % 50 == 0:
                     # train_loss, summary_str = sess.run([loss, summary_op], feed_dict=feed_dict)
                     scipy.misc.imsave('logs/{:d}_image.png'.format(step), utils.merge(
                         np.array(train_images), SAMPLE_SHAPE))
-                    scipy.misc.imsave('logs/{:d}_gt_bg.png'.format(step), utils.heatmap_visualize(utils.merge(
-                        np.array(train_annotations)[:, :, :, 0], SAMPLE_SHAPE, is_gray=True)))
-                    scipy.misc.imsave('logs/{:d}_gt_fg.png'.format(step), utils.heatmap_visualize(utils.merge(
-                        np.array(train_annotations)[:, :, :, 1], SAMPLE_SHAPE, is_gray=True)))
+                    scipy.misc.imsave('logs/{:d}_gt.png'.format(step), utils.heatmap_visualize(utils.merge(
+                        np.array(train_annotations), SAMPLE_SHAPE, is_gray=True)))
 
                     pred = sess.run(pred_annotation, feed_dict={image: train_images, annotation: train_annotations,
                                                                 keep_probability: 1.0})
@@ -250,7 +246,7 @@ def main(argv=None):
                         utils.merge(pred, SAMPLE_SHAPE, is_gray=True)))
                     # summary_writer.add_summary(summary_str, step)
 
-                if step % 1000 == 0:
+                if step % 300 == 0:
                     # valid_images, valid_annotations = validation_dataset_reader.next_batch(FLAGS.batch_size)
                     # valid_loss = sess.run(loss, feed_dict={image: valid_images, annotation: valid_annotations,
                     #                                       keep_probability: 1.0})

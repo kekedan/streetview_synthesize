@@ -47,6 +47,24 @@ labels = [
 ]
 
 
+def merge(images, size, is_gray=False):
+    h, w = images.shape[1], images.shape[2]
+    if is_gray:
+        img = np.zeros((int(h * size[0]), int(w * size[1])))
+        for idx, image in enumerate(images):
+            i = int(idx % size[1])
+            j = int(idx // size[1])
+            img[j*h:j*h+h, i*w:i*w+w] = image
+    else:
+        img = np.zeros((int(h * size[0]), int(w * size[1]), 3))
+        for idx, image in enumerate(images):
+            i = int(idx % size[1])
+            j = int(idx // size[1])
+            img[j*h:j*h+h, i*w:i*w+w, :] = image
+
+    return img
+
+
 def store_single(filename, height , width, col_num, sel):
     """
     Given an merge-image [rol_num, col_num]
@@ -85,6 +103,7 @@ def crop_images(dataset_dir):
         #break
 
 
+crop_images()
 def crop_images_label(dataset_dir, is_mask=True):
     """
     Read all labels under the different folders
@@ -345,28 +364,40 @@ def create_mask_img_instance():
 
 def select_human_img():
     alpha = 0.05 # [0.001]
+    beta = 0.01
     data_set_dir = '/data/vllab1/dataset/CITYSCAPES/CITY/mask'
     data_set_image_dir = '/data/vllab1/dataset/CITYSCAPES/CITY/image'
     data = sorted(glob(os.path.join(data_set_dir, "*.png")))
     data_image = sorted(glob(os.path.join(data_set_image_dir, "*.png")))
-    selected = []
+    w_human, h_human, wo_human = [], [], []
     for index, filePath in enumerate(data):
         print ('%d/%d' % (index, len(data)))
         img = scipy.misc.imread(filePath)
-        img_data = scipy.misc.imread(data_image[index])
+        #img_data = scipy.misc.imread(data_image[index])
         human_pixel = np.nonzero(img == 255)
         human_ratio = float(len(human_pixel[0])) / float((img.shape[0] * img.shape[1]))
+        full_name = filePath.split('/')[-1].split('_')
+        name = '{}_{}_{}'.format(full_name[0], full_name[1], full_name[2])
         if human_ratio > alpha:
-            full_name = filePath.split('/')[-1].split('_')
-            name = '{}_{}_{}'.format(full_name[0], full_name[1], full_name[2])
-            selected.append(name)
+            w_human.append(name)
             #scipy.misc.imsave('/data/vllab1/dataset/CITYSCAPES/CITY/human_mask_new/{}'.format(filePath.split('/')[-1]), img)
             #scipy.misc.imsave('/data/vllab1/dataset/CITYSCAPES/CITY/human_image_new/{}'.format(data_image[index].split('/')[-1]), img_data)
+        elif human_ratio > beta:
+            h_human.append(name)
+        else:
+            wo_human.append(name)
 
-    file_obj = open('human_fileName_new', 'wb')
-    pickle.dump(selected, file_obj)
+    file_obj = open('human_w.pkl', 'wb')
+    pickle.dump(w_human, file_obj)
     file_obj.close()
-    print len(selected)
+    file_obj = open('human_h.pkl', 'wb')
+    pickle.dump(h_human, file_obj)
+    file_obj.close()
+    file_obj = open('human_wo.pkl', 'wb')
+    pickle.dump(wo_human, file_obj)
+    file_obj.close()
+
+    print len(w_human), len(h_human), len(wo_human)
 
 
 def load_image_with_name():
@@ -383,3 +414,19 @@ def load_image_with_name():
         scipy.misc.imsave(image_name, image)
         scipy.misc.imsave(mask_name, mask)
         break
+
+
+def load_batch_with_name():
+    dataset_dir = '/data/vllab1/dataset/CITYSCAPES/CITY'
+    file_obj = open('human_w.pkl', 'r')
+    human_file_name = pickle.load(file_obj)
+    mask = np.zeros((4, 256, 512))
+    for index in range(0, 4):
+        name = human_file_name[index]
+        image_name = '{}_leftImg8bit.png'.format(name)
+        mask_name = '{}_gtFine_labelIds.png'.format(name)
+
+        mask[index, :, :] = scipy.misc.imread(os.path.join(dataset_dir, 'mask', mask_name))
+
+    scipy.misc.imsave('human_w.png', merge(mask, (2,2), is_gray=True))
+

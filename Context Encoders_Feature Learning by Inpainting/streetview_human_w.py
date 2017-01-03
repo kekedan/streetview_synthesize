@@ -13,12 +13,12 @@ sample_itr = 5
 
 FLAGS = tf.flags.FLAGS
 tf.flags.DEFINE_string("data_dir", "/data/vllab1/dataset/CITYSCAPES/CITY", "path to dataset")
-tf.flags.DEFINE_string("name_dir", "/data/vllab1/dataset/CITYSCAPES/CITY/human_wo.pkl", "path to name")
-tf.flags.DEFINE_string("model_dir", "/data/vllab1/checkpoint/context inpainting/wo_human/", "path to model directory")
-tf.flags.DEFINE_string("result_dir", "./result/", "path to result directory")
+tf.flags.DEFINE_string("name_dir", "/data/vllab1/dataset/CITYSCAPES/CITY/human_w.pkl", "path to name")
+tf.flags.DEFINE_string("model_dir", "/data/vllab1/checkpoint/context inpainting/w_human/", "path to model directory")
+tf.flags.DEFINE_string("result_dir", "./result_w/", "path to result directory")
 
-tf.flags.DEFINE_integer("batch_size", "4", "batch size for training")
-tf.flags.DEFINE_integer("sample_shape", "2", "for sample merge")
+tf.flags.DEFINE_integer("batch_size", "16", "batch size for training")
+tf.flags.DEFINE_integer("sample_shape", "4", "for sample merge")
 tf.flags.DEFINE_integer("image_size_h", "256", "height of the image")
 tf.flags.DEFINE_integer("image_size_w", "512", "width of the image")
 
@@ -117,7 +117,7 @@ sample_masks = np.array([read_mask(
 
 for epoch in range(n_epochs):
 
-    if epoch % 1 == 0:
+    if epoch % 40 == 0:
         reconstruction_vals, recon_ori_vals, bn1_val, bn2_val, bn3_val, bn4_val, bn5_val, bn6_val, debn4_val, debn3_val, debn2_val, debn1_val, loss_G_val, loss_D_val = sess.run(
             [reconstruction, reconstruction_ori, bn1, bn2, bn3, bn4, bn5, bn6, debn4, debn3, debn2, debn1, loss_G,
              loss_D],

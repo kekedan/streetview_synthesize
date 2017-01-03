@@ -3,12 +3,32 @@ import skimage.transform
 import scipy.misc
 
 import numpy as np
+import pickle
+import os
+
+
+def load_image_with_name(name_dir, need_shuffle=False):
+    dataset_dir = '/data/vllab1/dataset/CITYSCAPES/CITY'
+    file_obj = open(name_dir, 'r')
+    human_file_name = pickle.load(file_obj)
+    if need_shuffle:
+        np.random.shuffle(human_file_name)
+    length = len(human_file_name)
+    images = np.arrays
+    for index in range(0, length):
+        name = human_file_name[index]
+        image_name = '{}_leftImg8bit.png'.format(name)
+        mask_name = '{}_gtFine_labelIds.png'.format(name)
+
+        image = scipy.misc.imread(os.path.join(dataset_dir, 'fine_image', image_name))
+        mask = scipy.misc.imread(os.path.join(dataset_dir, 'fine_mask', mask_name))
 
 
 def read_mask(train_annotation_name):
     img = scipy.misc.imread(train_annotation_name).astype(np.uint8) / 255
     train_annotations = np.dstack((img, img, img))
     return train_annotations
+
 
 def merge(images, size, is_gray=False):
     h, w = images.shape[1], images.shape[2]

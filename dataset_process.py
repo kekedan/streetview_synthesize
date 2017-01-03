@@ -316,8 +316,6 @@ def create_instance():
         #for key, value in sorted(label_instance.items()):
         #    print(key)
 
-create_instance()
-
 
 def create_mask_img_instance():
     data = sorted(glob(os.path.join('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/image', "*.png")))

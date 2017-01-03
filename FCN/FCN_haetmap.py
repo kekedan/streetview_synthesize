@@ -11,6 +11,7 @@ from six.moves import xrange
 FLAGS = tf.flags.FLAGS
 tf.flags.DEFINE_string("data_dir", "/data/vllab1/dataset/CITYSCAPES/CITY/human_image", "path to dataset")
 tf.flags.DEFINE_string("label_dir", "/data/vllab1/dataset/CITYSCAPES/CITY/human_mask", "path to annotation")
+tf.flags.DEFINE_string("test_dir", "/data/vllab1/dataset/CITYSCAPES/CITY/human_mask", "path to annotation")
 tf.flags.DEFINE_string("model_dir", "/data/vllab1/checkpoint/", "Path to vgg model mat")
 tf.flags.DEFINE_string("logs_dir", "/data/vllab1/checkpoint/FCN/heatmap_new_loss/", "path to logs directory")
 
@@ -151,16 +152,16 @@ def main(argv=None):
 
     keep_probability = tf.placeholder(tf.float32, name="keep_probabilty")
     image = tf.placeholder(tf.float32, shape=[None, IMAGE_SIZE_h, IMAGE_SIZE_w, 3], name="input_image")
-    annotation = tf.placeholder(tf.int32, shape=[None, IMAGE_SIZE_h, IMAGE_SIZE_w, 2], name="annotation")
+    annotation = tf.placeholder(tf.float32, shape=[None, IMAGE_SIZE_h, IMAGE_SIZE_w, 2], name="annotation")
 
     pred_annotation, logits = inference(image, keep_probability)
     # tf.image_summary("input_image", image, max_images=2)
     # tf.image_summary("ground_truth", tf.cast(annotation, tf.uint8), max_images=2)
     # tf.image_summary("pred_annotation", tf.cast(pred_annotation, tf.uint8), max_images=2)
-    loss = tf.reduce_mean((tf.nn.sparse_softmax_cross_entropy_with_logits(logits, annotation[:, :, :, 1])))
-    loss_bg = tf.reduce_mean((tf.contrib.losses.mean_squared_error(logits[:, :, :, 0], annotation[:, :, :, 0])))
-    loss_fg = tf.reduce_mean((tf.contrib.losses.mean_squared_error(logits[:, :, :, 1], annotation[:, :, :, 1])))
-    loss_new = 0.25 * loss_bg + loss_fg
+    loss = tf.reduce_mean((tf.nn.sparse_softmax_cross_entropy_with_logits(logits, tf.to_int32(annotation[:, :, :, 1], name='ToInt32'))))
+    loss_bg = tf.reduce_mean((tf.nn.sigmoid_cross_entropy_with_logits(logits[:, :, :, 0], annotation[:, :, :, 0])))
+    loss_fg = tf.reduce_mean((tf.nn.sigmoid_cross_entropy_with_logits(logits[:, :, :, 1], annotation[:, :, :, 1])))
+    loss_new = 0.2 * loss_bg + 0.8 * loss_fg
     # tf.scalar_summary("entropy", loss)
 
     trainable_var = tf.trainable_variables()
@@ -169,7 +170,7 @@ def main(argv=None):
             utils.add_to_regularization_and_summary(var)
 
     # TODO new loss
-    train_op = train(loss_fg, trainable_var)
+    train_op = train(loss_new, trainable_var)
 
     # print("Setting up summary op...")
     # summary_op = tf.merge_all_summaries()
@@ -259,6 +260,28 @@ def main(argv=None):
                     saver.save(sess, FLAGS.logs_dir + "model.ckpt", step)
 
     elif FLAGS.mode == "visualize":
+        # valid_images, valid_annotations = validation_dataset_reader.get_random_batch(FLAGS.batch_size)
+        train_images = scipy.misc.imread('/data/vllab1/Github/streetview_synthesize/aachen_000009_000019_leftImg8bit.png').astype(
+            np.uint8)
+        train_annotations = scipy.misc.imread('/data/vllab1/Github/streetview_synthesize/aachen_000009_000019_gtFine_labelIds.png').astype(
+            np.uint8)
+        valid_images = [train_images]
+        #valid_annotations = [np.expand_dims(train_annotations, axis=3)]
+        valid_annotations = [train_annotations]
+
+        pred = sess.run(pred_annotation, feed_dict={image: valid_images, annotation: valid_annotations,
+                                                    keep_probability: 1.0})
+        #valid_annotations = [np.squeeze(valid_annotations, axis=3)]
+        pred = np.squeeze(pred, axis=3)
+
+        for itr in range(FLAGS.batch_size):
+            scipy.misc.imsave("inp_" + str(5 + itr) + '.png', valid_images[itr].astype(np.uint8))
+            scipy.misc.imsave("gt_" + str(5 + itr) + '.png', valid_annotations[itr].astype(np.uint8))
+            scipy.misc.imsave("pred_" + str(5 + itr) + '.png', pred[itr].astype(np.uint8) * 255)
+            #utils.save_image(pred[itr].astype(np.uint8), FLAGS.logs_dir, name="pred_" + str(5 + itr))
+            print("Saved image: %d" % itr)
+
+    elif FLAGS.mode == "test":
         # valid_images, valid_annotations = validation_dataset_reader.get_random_batch(FLAGS.batch_size)
         train_images = scipy.misc.imread('/data/vllab1/Github/streetview_synthesize/aachen_000009_000019_leftImg8bit.png').astype(
             np.uint8)

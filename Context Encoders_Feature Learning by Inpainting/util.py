@@ -1,10 +1,32 @@
 import skimage.io
 import skimage.transform
-from PIL import ImageFile
-import os
-import ipdb
+import scipy.misc
 
 import numpy as np
+
+
+def read_mask(train_annotation_name):
+    img = scipy.misc.imread(train_annotation_name).astype(np.uint8) / 255
+    train_annotations = np.dstack((img, img, img))
+    return train_annotations
+
+def merge(images, size, is_gray=False):
+    h, w = images.shape[1], images.shape[2]
+    if is_gray:
+        img = np.zeros((int(h * size[0]), int(w * size[1])))
+        for idx, image in enumerate(images):
+            i = int(idx % size[1])
+            j = int(idx // size[1])
+            img[j*h:j*h+h, i*w:i*w+w] = image
+    else:
+        img = np.zeros((int(h * size[0]), int(w * size[1]), 3))
+        for idx, image in enumerate(images):
+            i = int(idx % size[1])
+            j = int(idx // size[1])
+            img[j*h:j*h+h, i*w:i*w+w, :] = image
+
+    return img
+
 
 #def load_image( path, height=128, width=128 ):
 def load_image( path, pre_height=146, pre_width=146, height=128, width=128 ):

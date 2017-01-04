@@ -9,15 +9,15 @@ import TensorflowUtils as utils
 from six.moves import xrange
 
 FLAGS = tf.flags.FLAGS
-tf.flags.DEFINE_string("data_dir", "/data/vllab1/dataset/CITYSCAPES/CITY/image_inpainting_instance", "path to dataset")
-tf.flags.DEFINE_string("label_dir", "/data/vllab1/dataset/CITYSCAPES/CITY/human_new_instance", "path to annotation")
+tf.flags.DEFINE_string("data_dir", "/data/vllab1/dataset/CITYSCAPES/CITY/human_instance_inpainting", "path to dataset")
+tf.flags.DEFINE_string("label_dir", "/data/vllab1/dataset/CITYSCAPES/CITY/human_instance_mask", "path to annotation")
 tf.flags.DEFINE_string("model_dir", "/data/vllab1/checkpoint/", "Path to vgg model mat")
 tf.flags.DEFINE_string("logs_dir", "/data/vllab1/checkpoint/FCN/heatmap_instance/", "path to logs directory")
 
 tf.flags.DEFINE_integer("batch_size", "9", "batch size for training")
 tf.flags.DEFINE_float("learning_rate", "1e-4", "Learning rate for Adam Optimizer")
 tf.flags.DEFINE_bool('debug', "False", "Debug mode: True/ False")
-tf.flags.DEFINE_string('mode', "test", "Mode train/ test/ visualize")
+tf.flags.DEFINE_string('mode', "train", "Mode train/ test/ visualize")
 
 MODEL_URL = 'http://www.vlfeat.org/matconvnet/models/beta16/imagenet-vgg-verydeep-19.mat'
 
@@ -196,7 +196,7 @@ def main(argv=None):
     sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
 
     print("Setting up Saver...")
-    saver = tf.train.Saver(max_to_keep=10)
+    saver = tf.train.Saver(max_to_keep=4)
     # summary_writer = tf.train.SummaryWriter(FLAGS.logs_dir, sess.graph)
 
     sess.run(tf.global_variables_initializer())
@@ -232,7 +232,7 @@ def main(argv=None):
                     print("Step: %d, Train_loss:%g" % (step, train_loss))
                     # summary_writer.add_summary(summary_str, step)
 
-                if step % 50 == 0:
+                if step % 100 == 0:
                     # train_loss, summary_str = sess.run([loss, summary_op], feed_dict=feed_dict)
                     scipy.misc.imsave('logs/{:d}_image.png'.format(step), utils.merge(
                         np.array(train_images), SAMPLE_SHAPE))

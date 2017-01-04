@@ -14,8 +14,8 @@ sample_itr = 5
 FLAGS = tf.flags.FLAGS
 tf.flags.DEFINE_string("data_dir", "/data/vllab1/dataset/CITYSCAPES/CITY", "path to dataset")
 tf.flags.DEFINE_string("name_dir", "/data/vllab1/dataset/CITYSCAPES/CITY/human_wo.pkl", "path to name")
-tf.flags.DEFINE_string("test_name_dir", "/data/vllab1/dataset/CITYSCAPES/CITY/human_w.pkl", "path to name")
-tf.flags.DEFINE_string("model_dir", "/data/vllab1/checkpoint/context inpainting/wo_human/", "path to model directory")
+tf.flags.DEFINE_string("test_name_dir", "/data/vllab1/dataset/CITYSCAPES/CITY/human_w.pkl", "path to test name")
+tf.flags.DEFINE_string("model_dir", "/data/vllab1/checkpoint/context inpainting/inpainting/", "path to model directory")
 tf.flags.DEFINE_string("result_dir", "./test_wo/", "path to result directory")
 
 tf.flags.DEFINE_integer("batch_size", "16", "batch size for training")
@@ -56,7 +56,7 @@ mask_overlap = 1 - mask_recon
 
 # TODO check loss
 loss_recon_ori = tf.square(images_tf - reconstruction)
-loss_recon_center = tf.reduce_mean(tf.sqrt(1e-5 + tf.reduce_sum(loss_recon_ori * mask_recon, [1, 2, 3]))) / 10.  # Loss for non-overlapping region
+loss_recon_center = tf.reduce_mean(tf.sqrt(1e-5 + tf.reduce_sum(loss_recon_ori * mask_recon, [1, 2, 3]))) * 2  # Loss for non-overlapping region
 loss_recon_overlap = tf.reduce_mean(tf.sqrt(1e-5 + tf.reduce_sum(loss_recon_ori * mask_overlap, [1, 2, 3]))) # Loss for overlapping region
 loss_recon = loss_recon_center + loss_recon_overlap
 

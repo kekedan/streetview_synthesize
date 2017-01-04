@@ -100,8 +100,7 @@ def crop_images(dataset_dir):
 
         img = scipy.misc.imread(filePath).astype(np.uint8)
         img = scipy.misc.imresize(img, 0.25, interp='bilinear', mode=None)
-        scipy.misc.imsave('/mnt/data/andy/dataset/CITYSCAPES/image/' + filePath.split('/')[-1], img)
-        #break
+        scipy.misc.imsave('/data/vllab1/dataset/CITYSCAPES/CITY/coarse_image/' + filePath.split('/')[-1], img)
 
 
 def crop_images_label(dataset_dir, is_mask=True):
@@ -158,8 +157,7 @@ def crop_images_label_big(dataset_dir, is_mask=True):
 
         img = scipy.misc.imresize(img, 0.25, interp='bilinear', mode=None)
         img[np.nonzero(img > 0)] = 255
-        scipy.misc.imsave('/mnt/data/andy/dataset/CITYSCAPES/mask/' + filePath.split('/')[-1], img)
-        #break
+        scipy.misc.imsave('/data/vllab1/dataset/CITYSCAPES/CITY/coarse_mask/' + filePath.split('/')[-1], img)
 
 
 def crop_images_color(dataset_dir, is_mask=True):
@@ -360,9 +358,6 @@ def create_instance():
                     image_name.split('.')[0], c_idx, i_idx), mask)
 
 
-create_instance()
-
-
 def create_mask_img_instance():
     data = sorted(glob(os.path.join('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/image', "*.png")))
     label = sorted(glob(os.path.join('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/label2_big', "*.png")))
@@ -425,6 +420,43 @@ def select_human_img():
     file_obj.close()
 
     print len(w_human), len(h_human), len(wo_human)
+
+
+def select_no_human_img():
+    alpha = 0.
+    human_no_extra = []
+
+    data_set_dir = '/data/vllab1/dataset/CITYSCAPES/CITY/fine_mask'
+    data = sorted(glob(os.path.join(data_set_dir, "*.png")))
+
+    for index, filePath in enumerate(data):
+        print ('%d/%d' % (index, len(data)))
+        img = scipy.misc.imread(filePath)
+        human_pixel = np.nonzero(img == 255)
+        human_ratio = float(len(human_pixel[0])) / float((img.shape[0] * img.shape[1]))
+        full_name = filePath.split('/')[-1].split('_')
+        name = '{}_{}_{}'.format(full_name[0], full_name[1], full_name[2])
+        if human_ratio == alpha:
+            human_no_extra.append(name)
+
+    data_set_dir = '/data/vllab1/dataset/CITYSCAPES/CITY/coarse_mask'
+    data = sorted(glob(os.path.join(data_set_dir, "*.png")))
+
+    for index, filePath in enumerate(data):
+        print ('%d/%d' % (index, len(data)))
+        img = scipy.misc.imread(filePath)
+        human_pixel = np.nonzero(img == 255)
+        human_ratio = float(len(human_pixel[0])) / float((img.shape[0] * img.shape[1]))
+        full_name = filePath.split('/')[-1].split('_')
+        name = '{}_{}_{}'.format(full_name[0], full_name[1], full_name[2])
+        if human_ratio == alpha:
+            human_no_extra.append(name)
+
+    file_obj = open('human_no_extra.pkl', 'wb')
+    pickle.dump(human_no_extra, file_obj)
+    file_obj.close()
+
+    print len(human_no_extra)
 
 
 def load_image_with_name():

@@ -87,7 +87,7 @@ grads_vars_D = optimizer_D.compute_gradients( loss_D, var_list=var_D )
 #grads_vars_D = map(lambda gv: [tf.clip_by_value(gv[0], -10., 10.), gv[1]], grads_vars_D)
 train_op_D = optimizer_D.apply_gradients( grads_vars_D )
 
-saver = tf.train.Saver(max_to_keep=100)
+saver = tf.train.Saver(max_to_keep=5)
 
 tf.initialize_all_variables().run()
 
@@ -117,7 +117,7 @@ sample_masks = np.array([read_mask(
 
 for epoch in range(n_epochs):
 
-    if epoch % 30 == 0:
+    if epoch % 5 == 0:
         reconstruction_vals, recon_ori_vals, bn1_val, bn2_val, bn3_val, bn4_val, bn5_val, bn6_val, debn4_val, debn3_val, debn2_val, debn1_val, loss_G_val, loss_D_val = sess.run(
             [reconstruction, reconstruction_ori, bn1, bn2, bn3, bn4, bn5, bn6, debn4, debn3, debn2, debn1, loss_G,
              loss_D],
@@ -165,8 +165,8 @@ for epoch in range(n_epochs):
                     is_train: True
                     })
 
-        # TODO 5:1?
-        if iters % 5 == 0:
+        # TODO 2:1?
+        if iters % 2 == 0:
             _, loss_D_val, adv_pos_val, adv_neg_val = sess.run(
                     [train_op_D, loss_D, adversarial_pos, adversarial_neg],
                     feed_dict={
@@ -236,7 +236,7 @@ for epoch in range(n_epochs):
     # Every epoch
     FLAGS.learning_rate *= 0.99
     #saver.save(sess, model_path + 'model', global_step=epoch)
-    if epoch % 150 == 0:
+    if epoch % 10 == 0:
         print('save')
         saver.save(sess, FLAGS.model_dir + "model.ckpt", global_step=epoch)
 

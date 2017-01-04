@@ -14,16 +14,16 @@ tf.flags.DEFINE_string("label_dir", "/data/vllab1/dataset/CITYSCAPES/CITY/human_
 tf.flags.DEFINE_string("model_dir", "/data/vllab1/checkpoint/", "Path to vgg model mat")
 tf.flags.DEFINE_string("logs_dir", "/data/vllab1/checkpoint/FCN/heatmap_instance/", "path to logs directory")
 
-tf.flags.DEFINE_integer("batch_size", "4", "batch size for training")
+tf.flags.DEFINE_integer("batch_size", "9", "batch size for training")
 tf.flags.DEFINE_float("learning_rate", "1e-4", "Learning rate for Adam Optimizer")
 tf.flags.DEFINE_bool('debug', "False", "Debug mode: True/ False")
-tf.flags.DEFINE_string('mode', "train", "Mode train/ test/ visualize")
+tf.flags.DEFINE_string('mode', "test", "Mode train/ test/ visualize")
 
 MODEL_URL = 'http://www.vlfeat.org/matconvnet/models/beta16/imagenet-vgg-verydeep-19.mat'
 
 MAX_ITERATION = int(1e5 + 1)
 NUM_OF_CLASSESS = 2
-SAMPLE_SHAPE = (2, 2)
+SAMPLE_SHAPE = (3, 3)
 IMAGE_SIZE_h = 256
 IMAGE_SIZE_w = 512
 
@@ -154,6 +154,7 @@ def main(argv=None):
     annotation = tf.placeholder(tf.int32, shape=[None, IMAGE_SIZE_h, IMAGE_SIZE_w], name="annotation")
 
     pred_annotation, logits = inference(image, keep_probability)
+
     # tf.image_summary("input_image", image, max_images=2)
     # tf.image_summary("ground_truth", tf.cast(annotation, tf.uint8), max_images=2)
     # tf.image_summary("pred_annotation", tf.cast(pred_annotation, tf.uint8), max_images=2)
@@ -189,14 +190,13 @@ def main(argv=None):
 
     # TODO next batch file name suffle
     data = sorted(glob(os.path.join(FLAGS.data_dir, "*.png")))
-    label = sorted(glob(os.path.join(FLAGS.label_dir, "*.png")))
     train_size = len(data)
 
     gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=1)
     sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
 
     print("Setting up Saver...")
-    saver = tf.train.Saver()
+    saver = tf.train.Saver(max_to_keep=10)
     # summary_writer = tf.train.SummaryWriter(FLAGS.logs_dir, sess.graph)
 
     sess.run(tf.global_variables_initializer())
@@ -207,24 +207,25 @@ def main(argv=None):
 
     if FLAGS.mode == "train":
         for epoch in xrange(MAX_ITERATION):
+            np.random.shuffle(data)
             for batch_itr in xrange(train_size / FLAGS.batch_size):
-                print(epoch, batch_itr)
+                print('[{:d}/{:d}] [{:d}/{:d}]'.format(epoch, MAX_ITERATION, batch_itr, train_size / FLAGS.batch_size))
                 train_images_name = data[batch_itr * FLAGS.batch_size:(batch_itr + 1) * FLAGS.batch_size]
-                train_annotations_name = label[batch_itr * FLAGS.batch_size:(batch_itr + 1) * FLAGS.batch_size]
 
                 train_images = [scipy.misc.imread(train_image_name).astype(np.uint8)
                                         for train_image_name in train_images_name]
 
                 # Is this the normal way?
-                train_annotations = [scipy.misc.imread(train_annotation_name).astype(np.uint8) / 255
-                                             for train_annotation_name in train_annotations_name]
+                train_annotations = [scipy.misc.imread(
+                    os.path.join(FLAGS.label_dir, train_annotation_name.split('/')[-1])).astype(np.uint8) / 255
+                                             for train_annotation_name in train_images_name]
 
                 # train_images, train_annotations = traitn_dataset_reader.next_batch(FLAGS.batch_size)
                 feed_dict = {image: train_images, annotation: train_annotations, keep_probability: 0.85}
 
                 sess.run(train_op, feed_dict=feed_dict)
 
-                step = epoch * train_size + batch_itr
+                step = epoch * train_size / FLAGS.batch_size + batch_itr
                 if step % 5 == 0:
                     # train_loss, summary_str = sess.run([loss, summary_op], feed_dict=feed_dict)
                     train_loss = sess.run(loss, feed_dict=feed_dict)
@@ -275,6 +276,34 @@ def main(argv=None):
             scipy.misc.imsave("pred_" + str(5 + itr) + '.png', pred[itr].astype(np.uint8) * 255)
             #utils.save_image(pred[itr].astype(np.uint8), FLAGS.logs_dir, name="pred_" + str(5 + itr))
             print("Saved image: %d" % itr)
+
+    elif FLAGS.mode == "test":
+        data, gt = [], []
+        dataset_dir = '/data/vllab1/dataset/CITYSCAPES/leftImg8bit_trainvaltest/leftImg8bit/val'
+        for folder in os.listdir(dataset_dir):
+            path = os.path.join(dataset_dir, folder, "*_leftImg8bit.png")
+            data.extend(glob(path))
+
+        #np.random.shuffle(data)
+
+        data_size = len(data)
+        for batch_itr in range(0, data_size / FLAGS.batch_size):
+            print('[{:d}/{:d}]'.format(batch_itr, data_size / FLAGS.batch_size))
+            val_images_name = data[batch_itr * FLAGS.batch_size:(batch_itr + 1) * FLAGS.batch_size]
+
+            val_images = [scipy.misc.imresize(
+                scipy.misc.imread(val_image_name).astype(np.uint8), 0.25, interp='bilinear', mode=None)
+                            for val_image_name in val_images_name]
+
+            pred = sess.run(pred_annotation, feed_dict={image: val_images, keep_probability: 1.0})
+            #valid_annotations = [np.squeeze(valid_annotations, axis=3)]
+            pred = np.squeeze(pred, axis=3)
+
+            scipy.misc.imsave('test/{:d}_image.png'.format(batch_itr), utils.merge(
+                np.array(val_images), SAMPLE_SHAPE))
+            scipy.misc.imsave('test/{:d}_pred.png'.format(batch_itr), utils.heatmap_visualize(
+                utils.merge(pred, SAMPLE_SHAPE, is_gray=True)))
+        #utils.save_image(pred[itr].astype(np.uint8), FLAGS.logs_dir, name="pred_" + str(5 + itr))
 
 
 if __name__ == "__main__":

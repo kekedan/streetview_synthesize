@@ -3,6 +3,7 @@ import json
 from PIL import Image, ImageDraw
 import pickle
 import os
+import itertools
 
 from utils import *
 
@@ -103,7 +104,6 @@ def crop_images(dataset_dir):
         #break
 
 
-crop_images()
 def crop_images_label(dataset_dir, is_mask=True):
     """
     Read all labels under the different folders
@@ -286,7 +286,7 @@ def create_merged_image(img_dir):
 def create_instance():
     alpha = 0.01
     dataset_dir = '/data/vllab1/dataset/CITYSCAPES/CITY'
-    file_obj = open('human_fileName_new', 'r')
+    file_obj = open('human_w.pkl', 'r')
     human_file_name = pickle.load(file_obj)
     length = len(human_file_name)
 
@@ -297,7 +297,7 @@ def create_instance():
         instance_name = '{}_gtFine_polygons.json'.format(name)
         city_name = instance_name.split('_', 1)[0]
 
-        image = scipy.misc.imread(os.path.join(dataset_dir, 'human_new_image', image_name))
+        image = scipy.misc.imread(os.path.join(dataset_dir, 'fine_image', image_name))
         instance = (os.path.join('/data/vllab1/dataset/CITYSCAPES/gtFine_trainvaltest/gtFine/train',
                                  city_name, instance_name))
 
@@ -307,6 +307,7 @@ def create_instance():
 
         objects = label_instance['objects']
         instance_num = 0
+        mask_instance = []
         for obj in objects:
             if obj['label'] == 'person':
                 #print(object['polygon'])
@@ -318,22 +319,48 @@ def create_instance():
 
                 human_pixel = np.nonzero(mask == 255)
                 human_ratio = float(len(human_pixel[0])) / float((img.shape[0] * img.shape[1]))
-                print('instance: {:d}, ratio:{:f}'.format(instance_num, human_ratio))
+                #print('instance: {:d}, ratio:{:f}'.format(instance_num, human_ratio))
                 if human_ratio > alpha:
-                    scipy.misc.imsave('/data/vllab1/dataset/CITYSCAPES/CITY/human_new_instance/{}_{:d}.png'.format(
+                    mask_instance.append(mask)
+                    instance_num += 1
+
+                '''
+                    scipy.misc.imsave('/data/vllab1/dataset/CITYSCAPES/CITY/human_instance_image/{}_{:d}.png'.format(
                         image_name.split('.')[0], instance_num), mask)
 
                     img = np.copy(image)
                     img[human_pixel + (0,)] = 0
                     img[human_pixel + (1,)] = 255
                     img[human_pixel + (2,)] = 0
-                    scipy.misc.imsave('/data/vllab1/dataset/CITYSCAPES/CITY/human_new_instance_mask/{}_{:d}.png'.format(
+                    scipy.misc.imsave('/data/vllab1/dataset/CITYSCAPES/CITY/human_instance_mask/{}_{:d}.png'.format(
                         image_name.split('.')[0], instance_num), img)
+                '''
+        print(instance_num)
+        if instance_num > 10:
+            instance_num = 10
+        instance_array = np.arange(instance_num)
+        for c_idx in range(1, instance_num + 1):
+            instance_combine = list(itertools.combinations(instance_array, c_idx))
+            for i_idx, combine_list in enumerate(instance_combine):
+                if i_idx > 20:
+                    break
+                mask = np.zeros((256, 512), dtype=np.uint8)
+                img = np.copy(image)
+                for ii_idx in combine_list:
+                    mask[np.nonzero(mask_instance[ii_idx] == 255)] = 255
 
-                    instance_num += 1
+                human_pixel = np.nonzero(mask == 255)
+                img[human_pixel + (0,)] = 0
+                img[human_pixel + (1,)] = 255
+                img[human_pixel + (2,)] = 0
 
-        #for key, value in sorted(label_instance.items()):
-        #    print(key)
+                scipy.misc.imsave('/data/vllab1/dataset/CITYSCAPES/CITY/human_instance_image/{}_{:d}_{:d}.png'.format(
+                    image_name.split('.')[0], c_idx, i_idx), img)
+                scipy.misc.imsave('/data/vllab1/dataset/CITYSCAPES/CITY/human_instance_mask/{}_{:d}_{:d}.png'.format(
+                    image_name.split('.')[0], c_idx, i_idx), mask)
+
+
+create_instance()
 
 
 def create_mask_img_instance():

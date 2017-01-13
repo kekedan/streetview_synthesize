@@ -249,8 +249,8 @@ def label_visualize(img_dir):
 
 
 def create_mask_img():
-    data = sorted(glob(os.path.join('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/image', "*.png")))
-    label = sorted(glob(os.path.join('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/label2_big', "*.png")))
+    data = sorted(glob(os.path.join('../../dataset/CITYSCAPES/CITY/human_image', "*.png")))
+    label = sorted(glob(os.path.join('../../dataset/CITYSCAPES/CITY/human_mask', "*.png")))
 
     length = len(data)
     for i in range(0, length):
@@ -263,7 +263,7 @@ def create_mask_img():
         img[indices + (0,)] = 0
         img[indices + (1,)] = 255
         img[indices + (2,)] = 0
-        scipy.misc.imsave('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/image_mask/mask_' + data[i].split('/')[-1], img)
+        scipy.misc.imsave('../../dataset/CITYSCAPES/CITY/human_mask_inpainting/' + data[i].split('/')[-1], img)
         #scipy.misc.imsave('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/image_mask/' + label2[i].split('/')[-1], img)
 
 
@@ -386,9 +386,9 @@ def create_mask_img_instance():
 
 def select_human_img():
     alpha = 0.05 # [0.001]
-    beta = 0.01
-    data_set_dir = '/data/vllab1/dataset/CITYSCAPES/CITY/mask'
-    data_set_image_dir = '/data/vllab1/dataset/CITYSCAPES/CITY/image'
+    beta = 0.00
+    data_set_dir = '../../dataset/CITYSCAPES/CITY/fine_mask'
+    data_set_image_dir = '../../dataset/CITYSCAPES/CITY/fine_image'
     data = sorted(glob(os.path.join(data_set_dir, "*.png")))
     data_image = sorted(glob(os.path.join(data_set_image_dir, "*.png")))
     w_human, h_human, wo_human = [], [], []
@@ -404,10 +404,10 @@ def select_human_img():
             w_human.append(name)
             #scipy.misc.imsave('/data/vllab1/dataset/CITYSCAPES/CITY/human_mask_new/{}'.format(filePath.split('/')[-1]), img)
             #scipy.misc.imsave('/data/vllab1/dataset/CITYSCAPES/CITY/human_image_new/{}'.format(data_image[index].split('/')[-1]), img_data)
-        elif human_ratio > beta:
-            h_human.append(name)
-        else:
+        elif human_ratio == beta:
             wo_human.append(name)
+        else:
+            h_human.append(name)
 
     file_obj = open('human_w.pkl', 'wb')
     pickle.dump(w_human, file_obj)
@@ -420,6 +420,43 @@ def select_human_img():
     file_obj.close()
 
     print len(w_human), len(h_human), len(wo_human)
+
+
+def select_human_img_2():
+    alpha = 0.05
+    human_no_extra = []
+
+    data_set_dir = '../../dataset/CITYSCAPES/CITY/fine_mask'
+    data = sorted(glob(os.path.join(data_set_dir, "*.png")))
+
+    for index, filePath in enumerate(data):
+        print ('%d/%d' % (index, len(data)))
+        img = scipy.misc.imread(filePath)
+        human_pixel = np.nonzero(img == 255)
+        human_ratio = float(len(human_pixel[0])) / float((img.shape[0] * img.shape[1]))
+        full_name = filePath.split('/')[-1].split('_')
+        name = '{}_{}_{}'.format(full_name[0], full_name[1], full_name[2])
+        if human_ratio > alpha:
+            human_no_extra.append(name)
+
+    data_set_dir = '../../dataset/CITYSCAPES/CITY/coarse_mask'
+    data = sorted(glob(os.path.join(data_set_dir, "*.png")))
+
+    for index, filePath in enumerate(data):
+        print ('%d/%d' % (index, len(data)))
+        img = scipy.misc.imread(filePath)
+        human_pixel = np.nonzero(img == 255)
+        human_ratio = float(len(human_pixel[0])) / float((img.shape[0] * img.shape[1]))
+        full_name = filePath.split('/')[-1].split('_')
+        name = '{}_{}_{}'.format(full_name[0], full_name[1], full_name[2])
+        if human_ratio > alpha:
+            human_no_extra.append(name)
+
+    file_obj = open('human_extra.pkl', 'wb')
+    pickle.dump(human_no_extra, file_obj)
+    file_obj.close()
+
+    print len(human_no_extra)
 
 
 def select_no_human_img():
@@ -460,32 +497,52 @@ def select_no_human_img():
 
 
 def load_image_with_name():
-    dataset_dir = '/data/vllab1/dataset/CITYSCAPES/CITY'
-    file_obj = open('human_fileName', 'r')
+    dataset_dir = '../../dataset/CITYSCAPES/CITY'
+    file_name = os.path.join(dataset_dir, 'extended_human.pkl')
+    file_obj = open(file_name, 'r')
     human_file_name = pickle.load(file_obj)
     for index in range(0, len(human_file_name)):
+        print ('%d/%d' % (index, len(human_file_name)))
         name = human_file_name[index]
         image_name = '{}_leftImg8bit.png'.format(name)
         mask_name = '{}_gtFine_labelIds.png'.format(name)
+        mask_name2 = '{}_gtCoarse_labelIds.png'.format(name)
 
-        image = scipy.misc.imread(os.path.join(dataset_dir, 'image', image_name))
-        mask = scipy.misc.imread(os.path.join(dataset_dir, 'mask', mask_name))
-        scipy.misc.imsave(image_name, image)
-        scipy.misc.imsave(mask_name, mask)
-        break
+        image = scipy.misc.imread(os.path.join(dataset_dir, 'coarse_image', image_name))
+        scipy.misc.imsave(os.path.join('../../dataset/CITYSCAPES/CITY/human_image', image_name), image)
+
+        try:
+            mask = scipy.misc.imread(os.path.join(dataset_dir, 'coarse_mask', mask_name))
+            scipy.misc.imsave(os.path.join('../../dataset/CITYSCAPES/CITY/human_mask', mask_name), mask)
+        except IOError:
+            mask = scipy.misc.imread(os.path.join(dataset_dir, 'coarse_mask', mask_name2))
+            scipy.misc.imsave(os.path.join('../../dataset/CITYSCAPES/CITY/human_mask', mask_name2), mask)
 
 
 def load_batch_with_name():
-    dataset_dir = '/data/vllab1/dataset/CITYSCAPES/CITY'
-    file_obj = open('human_w.pkl', 'r')
+    dataset_dir = '../../dataset/CITYSCAPES/CITY'
+    fileName = os.path.join(dataset_dir, 'extended_human.pkl')
+    file_obj = open(fileName, 'r')
     human_file_name = pickle.load(file_obj)
+    np.random.shuffle(human_file_name)
     mask = np.zeros((4, 256, 512))
-    for index in range(0, 4):
+    index, num = 0, 0
+    while num < 4:
         name = human_file_name[index]
+        print name
         image_name = '{}_leftImg8bit.png'.format(name)
         mask_name = '{}_gtFine_labelIds.png'.format(name)
+        mask_name2 = '{}_gtCoarse_labelIds.png'.format(name)
 
-        mask[index, :, :] = scipy.misc.imread(os.path.join(dataset_dir, 'mask', mask_name))
+        try:
+            print os.path.join(dataset_dir, 'coarse_mask', mask_name)
+            mask[num, :, :] = scipy.misc.imread(os.path.join(dataset_dir, 'coarse_mask', mask_name))
+        except IOError:
+            mask[num, :, :] = scipy.misc.imread(os.path.join(dataset_dir, 'coarse_mask', mask_name2))
+            num += 1
+            print num
 
-    scipy.misc.imsave('human_w.png', merge(mask, (2,2), is_gray=True))
+        index += 1
+
+    scipy.misc.imsave('extended_human.png', merge(mask, (2,2), is_gray=True))
 

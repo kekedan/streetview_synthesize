@@ -57,7 +57,7 @@ mask_overlap = 1 - mask_recon
 
 # TODO check loss
 loss_recon_ori = tf.square(images_tf - reconstruction)
-loss_recon_center = tf.reduce_mean(tf.sqrt(1e-5 + tf.reduce_sum(loss_recon_ori * mask_recon, [1, 2, 3]))) * 2  # Loss for non-overlapping region
+loss_recon_center = tf.reduce_mean(tf.sqrt(1e-5 + tf.reduce_sum(loss_recon_ori * mask_recon, [1, 2, 3]))) * 2 # Loss for non-overlapping region
 loss_recon_overlap = tf.reduce_mean(tf.sqrt(1e-5 + tf.reduce_sum(loss_recon_ori * mask_overlap, [1, 2, 3]))) # Loss for overlapping region
 loss_recon = loss_recon_center + loss_recon_overlap
 
@@ -176,13 +176,13 @@ if FLAGS.mode == 'train':
                 reconstruction_vals_ori = (255. * (reconstruction_vals + 1) / 2.).astype(int)
                 reconstruction_vals = train_masks * reconstruction_vals_ori + samples_hole
 
-                scipy.misc.imsave(os.path.join(FLAGS.result_dir, '{:d}_ori.png'.format(batch_itr))
+                scipy.misc.imsave(os.path.join(FLAGS.result_dir, '{:d}_ori.png'.format(iters/10))
                                   , merge(samples, (FLAGS.sample_shape, FLAGS.sample_shape)))
-                scipy.misc.imsave(os.path.join(FLAGS.result_dir, '{:d}_ori_hole.png'.format(batch_itr))
+                scipy.misc.imsave(os.path.join(FLAGS.result_dir, '{:d}_ori_hole.png'.format(iters/10))
                                   , merge(samples_hole, (FLAGS.sample_shape, FLAGS.sample_shape)))
-                scipy.misc.imsave(os.path.join(FLAGS.result_dir, '{:d}_rec_ori.png'.format(batch_itr))
+                scipy.misc.imsave(os.path.join(FLAGS.result_dir, '{:d}_rec_ori.png'.format(iters/10))
                                   , merge(reconstruction_vals_ori, (FLAGS.sample_shape, FLAGS.sample_shape)))
-                scipy.misc.imsave(os.path.join(FLAGS.result_dir, '{:d}_rec.png'.format(batch_itr))
+                scipy.misc.imsave(os.path.join(FLAGS.result_dir, '{:d}_rec.png'.format(iters/10))
                                   , merge(reconstruction_vals, (FLAGS.sample_shape, FLAGS.sample_shape)))
 
                 if np.isnan(reconstruction_vals.min() ) or np.isnan(reconstruction_vals.max()):

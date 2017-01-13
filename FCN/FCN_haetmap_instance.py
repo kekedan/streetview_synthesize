@@ -17,7 +17,7 @@ tf.flags.DEFINE_string("logs_dir", "/data/vllab1/checkpoint/FCN/heatmap_instance
 tf.flags.DEFINE_integer("batch_size", "9", "batch size for training")
 tf.flags.DEFINE_float("learning_rate", "1e-4", "Learning rate for Adam Optimizer")
 tf.flags.DEFINE_bool('debug', "False", "Debug mode: True/ False")
-tf.flags.DEFINE_string('mode', "train", "Mode train/ test/ visualize")
+tf.flags.DEFINE_string('mode', "test", "Mode train/ test/ visualize")
 
 MODEL_URL = 'http://www.vlfeat.org/matconvnet/models/beta16/imagenet-vgg-verydeep-19.mat'
 
@@ -279,7 +279,7 @@ def main(argv=None):
 
     elif FLAGS.mode == "test":
         data, gt = [], []
-        dataset_dir = '/data/vllab1/dataset/CITYSCAPES/leftImg8bit_trainvaltest/leftImg8bit/val'
+        dataset_dir = '../../../dataset/CITYSCAPES/leftImg8bit_trainvaltest/leftImg8bit/val'
         for folder in os.listdir(dataset_dir):
             path = os.path.join(dataset_dir, folder, "*_leftImg8bit.png")
             data.extend(glob(path))

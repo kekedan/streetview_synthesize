@@ -13,7 +13,7 @@ sample_itr = 5
 
 FLAGS = tf.flags.FLAGS
 tf.flags.DEFINE_string("data_dir", "/data/vllab1/dataset/CITYSCAPES/CITY/", "path to dataset")
-tf.flags.DEFINE_string("name_dir", "/data/vllab1/dataset/CITYSCAPES/CITY/human_no_extra.pkl", "path to name")
+tf.flags.DEFINE_string("name_dir", "/data/vllab1/dataset/CITYSCAPES/CITY/extended_human_wo.pkl", "path to name")
 tf.flags.DEFINE_string("human_dir", "/data/vllab1/dataset/CITYSCAPES/CITY/human_w.pkl", "path to test name")
 tf.flags.DEFINE_string("model_dir", "/data/vllab1/checkpoint/context inpainting/inpainting/", "path to model directory")
 tf.flags.DEFINE_string("result_dir", "./logs_inpainting/", "path to result directory")
@@ -35,32 +35,23 @@ images_tf = tf.placeholder(tf.float32, [FLAGS.batch_size, FLAGS.image_size_h, FL
 images_hole = tf.placeholder(tf.float32, [FLAGS.batch_size, FLAGS.image_size_h, FLAGS.image_size_w, 3], name="images_hole")
 images_mask = tf.placeholder(tf.float32, [FLAGS.batch_size, FLAGS.image_size_h, FLAGS.image_size_w, 3], name='images_mask')
 
-labels_D = tf.concat(0, [tf.ones([FLAGS.batch_size]), tf.zeros([FLAGS.batch_size])])
-labels_G = tf.ones([FLAGS.batch_size])
-
 model = Model()
-
 bn1, bn2, bn3, bn4, bn5, bn6, debn4, debn3, debn2, debn1, reconstruction_ori, reconstruction \
     = model.build_reconstruction(images_hole, is_train)
+
+mask_recon = images_mask
+mask_overlap = tf.ones_like(mask_recon) - mask_recon
+loss_recon_ori = tf.square(tf.subtract(images_tf, reconstruction))
+#loss_recon = tf.reduce_mean(tf.reduce_sum(loss_recon_ori, [1, 2, 3]))
+loss_recon_hole = tf.reduce_mean(tf.reduce_sum(tf.multiply(mask_recon, loss_recon_ori), [1, 2, 3]))
+loss_recon_overlap = tf.reduce_mean(tf.reduce_sum(tf.multiply(mask_overlap, loss_recon_ori), [1, 2, 3]))
+loss_recon = tf.add(tf.scalar_mul(10, loss_recon_hole), loss_recon_overlap)
+
 adversarial_pos = model.build_adversarial(images_tf, is_train)
 adversarial_neg = model.build_adversarial(reconstruction, is_train, reuse=True)
 adversarial_all = tf.concat(0, [adversarial_pos, adversarial_neg])
-
-# Applying bigger loss for overlapping region
-#mask_recon = tf.pad(tf.ones([hiding_size_h - 2*overlap_size, hiding_size_w - 2*overlap_size]), [[overlap_size,overlap_size], [overlap_size,overlap_size]])
-#mask_recon = tf.reshape(mask_recon, [hiding_size_h, hiding_size_w, 1])
-#mask_recon = tf.concat(2, [mask_recon]*3)
-#mask_overlap = 1 - mask_recon
-
-mask_recon = images_mask
-mask_overlap = 1 - mask_recon
-
-# TODO check loss
-loss_recon_ori = tf.square(images_tf - reconstruction)
-loss_recon_center = tf.reduce_mean(tf.sqrt(1e-5 + tf.reduce_sum(loss_recon_ori * mask_recon, [1, 2, 3]))) * 2 # Loss for non-overlapping region
-loss_recon_overlap = tf.reduce_mean(tf.sqrt(1e-5 + tf.reduce_sum(loss_recon_ori * mask_overlap, [1, 2, 3]))) # Loss for overlapping region
-loss_recon = loss_recon_center + loss_recon_overlap
-
+labels_D = tf.concat(0, [tf.ones([FLAGS.batch_size]), tf.zeros([FLAGS.batch_size])])
+labels_G = tf.ones([FLAGS.batch_size])
 loss_adv_D = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(adversarial_all, labels_D))
 loss_adv_G = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(adversarial_neg, labels_G))
 
@@ -69,40 +60,34 @@ loss_D = loss_adv_D * lambda_adv
 
 var_G = filter(lambda x: x.name.startswith('GEN'), tf.trainable_variables())
 var_D = filter(lambda x: x.name.startswith('DIS'), tf.trainable_variables())
-
 W_G = filter(lambda x: x.name.endswith('W:0'), var_G)
 W_D = filter(lambda x: x.name.endswith('W:0'), var_D)
-
 loss_G += weight_decay_rate * tf.reduce_mean(tf.pack(map(lambda x: tf.nn.l2_loss(x), W_G)))
 loss_D += weight_decay_rate * tf.reduce_mean(tf.pack(map(lambda x: tf.nn.l2_loss(x), W_D)))
 
-sess = tf.InteractiveSession()
 
 # TODO check gradients
 optimizer_G = tf.train.AdamOptimizer(learning_rate=learning_rate)
 grads_vars_G = optimizer_G.compute_gradients(loss_G, var_list=var_G )
 #grads_vars_G = map(lambda gv: [tf.clip_by_value(gv[0], -10., 10.), gv[1]], grads_vars_G)
 train_op_G = optimizer_G.apply_gradients(grads_vars_G)
-
-optimizer_D = tf.train.AdamOptimizer( learning_rate=learning_rate )
+optimizer_D = tf.train.AdamOptimizer(learning_rate=learning_rate)
 grads_vars_D = optimizer_D.compute_gradients( loss_D, var_list=var_D )
 #grads_vars_D = map(lambda gv: [tf.clip_by_value(gv[0], -10., 10.), gv[1]], grads_vars_D)
 train_op_D = optimizer_D.apply_gradients( grads_vars_D )
 
-saver = tf.train.Saver(max_to_keep=5)
-
-tf.initialize_all_variables().run()
-
+saver = tf.train.Saver(max_to_keep=4)
+sess = tf.Session()
+sess.run(tf.global_variables_initializer())
 ckpt = tf.train.get_checkpoint_state(FLAGS.model_dir)
 if ckpt and ckpt.model_checkpoint_path:
     saver.restore(sess, ckpt.model_checkpoint_path)
     print("Model restored...{}".format(ckpt.model_checkpoint_path))
+else:
+    print('No model found')
 
 if FLAGS.mode == 'train':
     iters = 0
-
-    loss_D_val = 0.
-    loss_G_val = 0.
 
     # streetview without human
     file_obj = open(FLAGS.name_dir, 'r')
@@ -146,8 +131,8 @@ if FLAGS.mode == 'train':
                         is_train: True
                         })
 
-            # TODO 2:1?
-            if iters % 2 == 0:
+            # TODO 1:1?
+            if iters % 1 == 0:
                 _, loss_D_val, adv_pos_val, adv_neg_val = sess.run(
                         [train_op_D, loss_D, adversarial_pos, adversarial_neg],
                         feed_dict={
@@ -158,10 +143,10 @@ if FLAGS.mode == 'train':
                             is_train: True
                                 })
                 # Printing activations every 10 iterations
-                print "Iter:", iters, "Gen Loss:", loss_G_val, "Recon Loss:", loss_recon_val, "Gen ADV Loss:", loss_adv_G_val, "Dis Loss:", loss_D_val, "||||", adv_pos_val.mean(), adv_neg_val.min(), adv_neg_val.max()
+                print "Iter:", iters, "Recon Loss:", loss_recon_val, "Gen ADV Loss:", loss_adv_G_val, "Gen Loss:", \
+                    loss_G_val, "Dis Loss:", loss_D_val, "||||", adv_pos_val.mean(), adv_neg_val.min(), adv_neg_val.max()
 
             if iters % 150 == 0:
-                # TODO batch check
                 reconstruction_vals, recon_ori_vals, bn1_val,bn2_val,bn3_val,bn4_val,bn5_val,bn6_val,debn4_val, debn3_val, debn2_val, debn1_val, loss_G_val, loss_D_val = sess.run(
                         [reconstruction, reconstruction_ori, bn1,bn2,bn3,bn4,bn5,bn6,debn4, debn3, debn2, debn1, loss_G, loss_D],
                         feed_dict={
@@ -174,7 +159,7 @@ if FLAGS.mode == 'train':
                 samples = (255. * (train_images + 1) / 2.).astype(int)
                 samples_hole = (255. * (train_images_hole + 1) / 2.).astype(int)
                 reconstruction_vals_ori = (255. * (reconstruction_vals + 1) / 2.).astype(int)
-                reconstruction_vals = train_masks * reconstruction_vals_ori + samples_hole
+                reconstruction_vals = train_masks * reconstruction_vals_ori + (1 - train_masks) * samples
 
                 scipy.misc.imsave(os.path.join(FLAGS.result_dir, '{:d}_ori.png'.format(iters/10))
                                   , merge(samples, (FLAGS.sample_shape, FLAGS.sample_shape)))

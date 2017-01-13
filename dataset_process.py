@@ -266,7 +266,7 @@ def create_mask_img():
         scipy.misc.imsave('../../dataset/CITYSCAPES/CITY/human_mask_inpainting/' + data[i].split('/')[-1], img)
         #scipy.misc.imsave('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/image_mask/' + label2[i].split('/')[-1], img)
 
-
+create_mask_img()
 def create_merged_image(img_dir):
     """
     example code:

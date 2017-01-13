@@ -9,7 +9,6 @@ weight_decay_rate = 0.00001
 momentum = 0.9
 lambda_recon = 0.9
 lambda_adv = 0.1
-sample_itr = 5
 
 FLAGS = tf.flags.FLAGS
 tf.flags.DEFINE_string("data_dir", "/data/vllab1/dataset/CITYSCAPES/CITY/", "path to dataset")
@@ -19,14 +18,14 @@ tf.flags.DEFINE_string("model_dir", "/data/vllab1/checkpoint/context inpainting/
 tf.flags.DEFINE_string("result_dir", "./logs_inpainting/", "path to result directory")
 tf.flags.DEFINE_string("test_dir", "./test_inpainting/", "path to result directory")
 
-tf.flags.DEFINE_integer("batch_size", "1", "batch size for training")
-tf.flags.DEFINE_integer("sample_shape", "1", "for sample merge")
+tf.flags.DEFINE_integer("batch_size", "16", "batch size for training")
+tf.flags.DEFINE_integer("sample_shape", "4", "for sample merge")
 tf.flags.DEFINE_integer("image_size_h", "256", "height of the image")
 tf.flags.DEFINE_integer("image_size_w", "512", "width of the image")
 
 tf.flags.DEFINE_float("learning_rate", "3e-4", "Learning rate for Adam Optimizer")
 tf.flags.DEFINE_bool('debug', "False", "Debug mode: True/ False")
-tf.flags.DEFINE_string('mode', "test", "Mode train/ test/ visualize")
+tf.flags.DEFINE_string('mode', "train", "Mode train/ test/ visualize")
 
 
 is_train = tf.placeholder(tf.bool)
@@ -73,9 +72,9 @@ grads_vars_G = optimizer_G.compute_gradients(loss_G, var_list=var_G )
 #grads_vars_G = map(lambda gv: [tf.clip_by_value(gv[0], -10., 10.), gv[1]], grads_vars_G)
 train_op_G = optimizer_G.apply_gradients(grads_vars_G)
 optimizer_D = tf.train.AdamOptimizer(learning_rate=learning_rate)
-grads_vars_D = optimizer_D.compute_gradients( loss_D, var_list=var_D )
+grads_vars_D = optimizer_D.compute_gradients(loss_D, var_list=var_D)
 #grads_vars_D = map(lambda gv: [tf.clip_by_value(gv[0], -10., 10.), gv[1]], grads_vars_D)
-train_op_D = optimizer_D.apply_gradients( grads_vars_D )
+train_op_D = optimizer_D.apply_gradients(grads_vars_D)
 
 saver = tf.train.Saver(max_to_keep=4)
 sess = tf.Session()
@@ -132,10 +131,11 @@ if FLAGS.mode == 'train':
                         is_train: True
                         })
 
-            # TODO 1:1?
-            if iters % 1 == 0:
-                _, loss_D_val, adv_pos_val, adv_neg_val = sess.run(
-                        [train_op_D, loss_D, adversarial_pos, adversarial_neg],
+            # TODO ckeck loss
+            # TODO 10:1?
+            if iters % 10 == 0:
+                _, loss_D_val, adv_pos_val, adv_neg_val, loss_adv_D_val = sess.run(
+                        [train_op_D, loss_D, adversarial_pos, adversarial_neg, loss_adv_D],
                         feed_dict={
                             images_tf: train_images,
                             images_mask: train_masks,
@@ -144,8 +144,9 @@ if FLAGS.mode == 'train':
                             is_train: True
                                 })
                 # Printing activations every 10 iterations
-                print "Iter:", iters, "Recon Loss:", loss_recon_val, "Gen ADV Loss:", loss_adv_G_val, "Gen Loss:", \
-                    loss_G_val, "Dis Loss:", loss_D_val, "||||", adv_pos_val.mean(), adv_neg_val.min(), adv_neg_val.max()
+                print "Iter:", iters, "Recon Loss:", loss_recon_val, "Gen ADV Loss:", loss_adv_G_val, \
+                    "Dis ADV Loss:", loss_adv_D_val, "Gen Loss:", loss_G_val, "Dis Loss:", loss_D_val, "||||", \
+                    adv_pos_val.mean(), adv_neg_val.min(), adv_neg_val.max()
 
             if iters % 150 == 0:
                 reconstruction_vals, recon_ori_vals, bn1_val,bn2_val,bn3_val,bn4_val,bn5_val,bn6_val,debn4_val, debn3_val, debn2_val, debn1_val, loss_G_val, loss_D_val = sess.run(
@@ -179,6 +180,7 @@ if FLAGS.mode == 'train':
 
         # Every epoch
         FLAGS.learning_rate *= 0.99
+        print(FLAGS.learning_rate)
         if epoch % 1 == 0:
             print('save')
             saver.save(sess, FLAGS.model_dir + "model.ckpt", global_step=epoch)

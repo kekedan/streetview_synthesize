@@ -17,15 +17,16 @@ tf.flags.DEFINE_string("name_dir", "/data/vllab1/dataset/CITYSCAPES/CITY/extende
 tf.flags.DEFINE_string("human_dir", "/data/vllab1/dataset/CITYSCAPES/CITY/human_w.pkl", "path to test name")
 tf.flags.DEFINE_string("model_dir", "/data/vllab1/checkpoint/context inpainting/inpainting/", "path to model directory")
 tf.flags.DEFINE_string("result_dir", "./logs_inpainting/", "path to result directory")
+tf.flags.DEFINE_string("test_dir", "./test_inpainting/", "path to result directory")
 
-tf.flags.DEFINE_integer("batch_size", "16", "batch size for training")
-tf.flags.DEFINE_integer("sample_shape", "4", "for sample merge")
+tf.flags.DEFINE_integer("batch_size", "1", "batch size for training")
+tf.flags.DEFINE_integer("sample_shape", "1", "for sample merge")
 tf.flags.DEFINE_integer("image_size_h", "256", "height of the image")
 tf.flags.DEFINE_integer("image_size_w", "512", "width of the image")
 
 tf.flags.DEFINE_float("learning_rate", "3e-4", "Learning rate for Adam Optimizer")
 tf.flags.DEFINE_bool('debug', "False", "Debug mode: True/ False")
-tf.flags.DEFINE_string('mode', "train", "Mode train/ test/ visualize")
+tf.flags.DEFINE_string('mode', "test", "Mode train/ test/ visualize")
 
 
 is_train = tf.placeholder(tf.bool)
@@ -202,30 +203,23 @@ elif FLAGS.mode == 'test':
             os.path.join(FLAGS.data_dir, 'fine_mask', '{}_gtFine_labelIds.png'.format(name))).astype(np.float32)
                                  for name in sample_images_name])
 
-        for index in range(0, FLAGS.batch_size):
-            hole_idx = np.nonzero(sample_masks[index, :, :])
-            sample_images[index, hole_idx[0], hole_idx[1], 0] = 0
-            sample_images[index, hole_idx[0], hole_idx[1], 1] = 0
-            sample_images[index, hole_idx[0], hole_idx[1], 2] = 0
+        sample_images_hole = (1 - sample_masks) * sample_images
 
-        reconstruction_vals, recon_ori_vals, bn1_val, bn2_val, bn3_val, bn4_val, bn5_val, bn6_val, debn4_val, debn3_val, debn2_val, debn1_val, loss_G_val, loss_D_val = sess.run(
-            [reconstruction, reconstruction_ori, bn1, bn2, bn3, bn4, bn5, bn6, debn4, debn3, debn2, debn1, loss_G,
-             loss_D],
+        reconstruction_vals, recon_ori_vals = sess.run(
+            [reconstruction, reconstruction_ori],
             feed_dict={
-                images_tf: sample_images,
-                images_mask: sample_masks,
-                images_hole: sample_masks,
+                images_hole: sample_images_hole,
                 is_train: False
             })
 
         samples = (255. * (sample_images + 1) / 2.).astype(int)
-        samples_hole = (1-sample_masks) * samples
+        samples_hole = (255. * (sample_images_hole + 1) / 2.).astype(int)
         reconstruction_vals_ori = (255. * (reconstruction_vals + 1) / 2.).astype(int)
-        reconstruction_vals = sample_masks * reconstruction_vals_ori + samples_hole
+        reconstruction_vals = sample_masks * reconstruction_vals_ori + (1 - sample_masks) * samples
 
-        scipy.misc.imsave(os.path.join(FLAGS.result_dir, '{:d}_ori.png'.format(batch_itr))
+        scipy.misc.imsave(os.path.join(FLAGS.test_dir, '{:d}_ori.png'.format(batch_itr))
                           , merge(samples, (FLAGS.sample_shape, FLAGS.sample_shape)))
-        scipy.misc.imsave(os.path.join(FLAGS.result_dir, '{:d}_rec_ori.png'.format(batch_itr))
+        scipy.misc.imsave(os.path.join(FLAGS.test_dir, '{:d}_rec_ori.png'.format(batch_itr))
                           , merge(reconstruction_vals_ori, (FLAGS.sample_shape, FLAGS.sample_shape)))
-        scipy.misc.imsave(os.path.join(FLAGS.result_dir, '{:d}_rec.png'.format(batch_itr))
+        scipy.misc.imsave(os.path.join(FLAGS.test_dir, '{:d}_rec.png'.format(batch_itr))
                           , merge(reconstruction_vals, (FLAGS.sample_shape, FLAGS.sample_shape)))

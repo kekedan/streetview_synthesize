@@ -9,15 +9,15 @@ import TensorflowUtils as utils
 from six.moves import xrange
 
 FLAGS = tf.flags.FLAGS
-tf.flags.DEFINE_string("data_dir", "/data/vllab1/dataset/CITYSCAPES/CITY/human_instance_inpainting", "path to dataset")
-tf.flags.DEFINE_string("label_dir", "/data/vllab1/dataset/CITYSCAPES/CITY/human_instance_mask", "path to annotation")
-tf.flags.DEFINE_string("model_dir", "/data/vllab1/checkpoint/", "Path to vgg model mat")
-tf.flags.DEFINE_string("logs_dir", "/data/vllab1/checkpoint/FCN/heatmap_instance/", "path to logs directory")
+tf.flags.DEFINE_string("data_dir", "../../../dataset/CITYSCAPES/CITY/instance_image_context", "path to dataset")
+tf.flags.DEFINE_string("label_dir", "../../../dataset/CITYSCAPES/CITY/instance_heatmap_context", "path to annotation")
+tf.flags.DEFINE_string("model_dir", "../../../checkpoint/", "Path to vgg model mat")
+tf.flags.DEFINE_string("logs_dir", "../../../checkpoint/FCN/heatmap_instance_context/", "path to logs directory")
 
 tf.flags.DEFINE_integer("batch_size", "9", "batch size for training")
 tf.flags.DEFINE_float("learning_rate", "1e-4", "Learning rate for Adam Optimizer")
 tf.flags.DEFINE_bool('debug', "False", "Debug mode: True/ False")
-tf.flags.DEFINE_string('mode', "test", "Mode train/ test/ visualize")
+tf.flags.DEFINE_string('mode', "train", "Mode train/ test/ visualize")
 
 MODEL_URL = 'http://www.vlfeat.org/matconvnet/models/beta16/imagenet-vgg-verydeep-19.mat'
 
@@ -172,22 +172,6 @@ def main(argv=None):
     # TODO new loss
     train_op = train(loss, trainable_var)
 
-    # print("Setting up summary op...")
-    # summary_op = tf.merge_all_summaries()
-
-    '''
-    print("Setting up image reader...")
-    train_records, valid_records = scene_parsing.read_dataset(FLAGS.data_dir)
-    print(len(train_records))t
-    print(len(valid_records))
-
-    print("Setting up dataset reader")
-    image_options = {'resize': True, 'resize_size': IMAGE_SIZE}
-    if FLAGS.mode == 'train':
-        train_dataset_reader = dataset.BatchDatset(train_records, image_options)
-    validation_dataset_reader = dataset.BatchDatset(valid_records, image_options)
-    '''
-
     # TODO next batch file name suffle
     data = sorted(glob(os.path.join(FLAGS.data_dir, "*.png")))
     train_size = len(data)
@@ -197,15 +181,16 @@ def main(argv=None):
 
     print("Setting up Saver...")
     saver = tf.train.Saver(max_to_keep=4)
-    # summary_writer = tf.train.SummaryWriter(FLAGS.logs_dir, sess.graph)
-
     sess.run(tf.global_variables_initializer())
     ckpt = tf.train.get_checkpoint_state(FLAGS.logs_dir)
     if ckpt and ckpt.model_checkpoint_path:
         saver.restore(sess, ckpt.model_checkpoint_path)
         print("Model restored...{}".format(ckpt.model_checkpoint_path))
+    else:
+        print('No model found')
 
     if FLAGS.mode == "train":
+        step = 0
         for epoch in xrange(MAX_ITERATION):
             np.random.shuffle(data)
             for batch_itr in xrange(train_size / FLAGS.batch_size):
@@ -225,14 +210,13 @@ def main(argv=None):
 
                 sess.run(train_op, feed_dict=feed_dict)
 
-                step = epoch * train_size / FLAGS.batch_size + batch_itr
                 if step % 5 == 0:
                     # train_loss, summary_str = sess.run([loss, summary_op], feed_dict=feed_dict)
                     train_loss = sess.run(loss, feed_dict=feed_dict)
                     print("Step: %d, Train_loss:%g" % (step, train_loss))
                     # summary_writer.add_summary(summary_str, step)
 
-                if step % 100 == 0:
+                if step % 20 == 0:
                     # train_loss, summary_str = sess.run([loss, summary_op], feed_dict=feed_dict)
                     scipy.misc.imsave('logs/{:d}_image.png'.format(step), utils.merge(
                         np.array(train_images), SAMPLE_SHAPE))
@@ -247,13 +231,15 @@ def main(argv=None):
                         utils.merge(pred, SAMPLE_SHAPE, is_gray=True)))
                     # summary_writer.add_summary(summary_str, step)
 
-                if step % 300 == 0:
+                if step % 100 == 0:
                     # valid_images, valid_annotations = validation_dataset_reader.next_batch(FLAGS.batch_size)
                     # valid_loss = sess.run(loss, feed_dict={image: valid_images, annotation: valid_annotations,
                     #                                       keep_probability: 1.0})
                     # print("%s ---> Validation_loss: %g" % (datetime.datetime.now(), valid_loss))
                     print('checkpoint')
                     saver.save(sess, FLAGS.logs_dir + "model.ckpt", step)
+
+                step += 1
 
     elif FLAGS.mode == "visualize":
         # valid_images, valid_annotations = validation_dataset_reader.get_random_batch(FLAGS.batch_size)

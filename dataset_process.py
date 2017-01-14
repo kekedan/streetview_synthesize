@@ -1,5 +1,6 @@
 from glob import glob
 import json
+import scipy.ndimage
 from PIL import Image, ImageDraw
 import pickle
 import os
@@ -266,7 +267,7 @@ def create_mask_img():
         scipy.misc.imsave('../../dataset/CITYSCAPES/CITY/human_mask_inpainting/' + data[i].split('/')[-1], img)
         #scipy.misc.imsave('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/image_mask/' + label2[i].split('/')[-1], img)
 
-create_mask_img()
+
 def create_merged_image(img_dir):
     """
     example code:
@@ -283,8 +284,8 @@ def create_merged_image(img_dir):
 
 def create_instance():
     alpha = 0.01
-    dataset_dir = '/data/vllab1/dataset/CITYSCAPES/CITY'
-    file_obj = open('human_w.pkl', 'r')
+    dataset_dir = '../../dataset/CITYSCAPES/CITY'
+    file_obj = open(os.path.join(dataset_dir, 'human_w.pkl'), 'r')
     human_file_name = pickle.load(file_obj)
     length = len(human_file_name)
 
@@ -292,11 +293,14 @@ def create_instance():
         name = human_file_name[index]
         print ('%d/%d : %s' % (index, length, name))
         image_name = '{}_leftImg8bit.png'.format(name)
+        mask_name = '{}_gtFine_labelIds.png'.format(name)
         instance_name = '{}_gtFine_polygons.json'.format(name)
         city_name = instance_name.split('_', 1)[0]
 
         image = scipy.misc.imread(os.path.join(dataset_dir, 'fine_image', image_name))
-        instance = (os.path.join('/data/vllab1/dataset/CITYSCAPES/gtFine_trainvaltest/gtFine/train',
+        mask_ori = scipy.misc.imread(os.path.join(dataset_dir, 'fine_mask', mask_name))
+        inpainting = scipy.misc.imread(os.path.join(dataset_dir, 'inpainting_context', image_name))
+        instance = (os.path.join('../../dataset/CITYSCAPES/gtFine_trainvaltest/gtFine/train',
                                  city_name, instance_name))
 
         with open(instance) as data_file:
@@ -313,9 +317,9 @@ def create_instance():
                 img = Image.new('L', (2048, 1024), 0)
                 ImageDraw.Draw(img).polygon(polygon, outline=1, fill=1)
                 img = scipy.misc.imresize(img, 0.25, interp='bilinear', mode=None)
-                mask = np.array(img) * 255
+                mask = np.array(img)
 
-                human_pixel = np.nonzero(mask == 255)
+                human_pixel = np.nonzero(mask == 1)
                 human_ratio = float(len(human_pixel[0])) / float((img.shape[0] * img.shape[1]))
                 #print('instance: {:d}, ratio:{:f}'.format(instance_num, human_ratio))
                 if human_ratio > alpha:
@@ -342,20 +346,22 @@ def create_instance():
             for i_idx, combine_list in enumerate(instance_combine):
                 if i_idx > 20:
                     break
-                mask = np.zeros((256, 512), dtype=np.uint8)
+                mask = np.zeros((256, 512), dtype=np.int8)
                 img = np.copy(image)
                 for ii_idx in combine_list:
-                    mask[np.nonzero(mask_instance[ii_idx] == 255)] = 255
+                    mask[np.nonzero(mask_instance[ii_idx] == 1)] = 1
 
-                human_pixel = np.nonzero(mask == 255)
-                img[human_pixel + (0,)] = 0
-                img[human_pixel + (1,)] = 255
-                img[human_pixel + (2,)] = 0
+                mask_d = scipy.ndimage.morphology.binary_dilation(mask, iterations=2).astype(mask.dtype)
+                heatmap = mask_ori * (1 - mask_d)
+                mask = np.dstack((mask, mask, mask))
+                img_instace = img * mask + inpainting * (1 - mask)
 
-                scipy.misc.imsave('/data/vllab1/dataset/CITYSCAPES/CITY/human_instance_image/{}_{:d}_{:d}.png'.format(
-                    image_name.split('.')[0], c_idx, i_idx), img)
-                scipy.misc.imsave('/data/vllab1/dataset/CITYSCAPES/CITY/human_instance_mask/{}_{:d}_{:d}.png'.format(
-                    image_name.split('.')[0], c_idx, i_idx), mask)
+                scipy.misc.imsave('../../dataset/CITYSCAPES/CITY/instance_image_context/{}_{:d}_{:d}.png'.format(
+                    image_name.split('.')[0], c_idx, i_idx), img_instace)
+                scipy.misc.imsave('../../dataset/CITYSCAPES/CITY/instance_heatmap_context/{}_{:d}_{:d}.png'.format(
+                    image_name.split('.')[0], c_idx, i_idx), heatmap)
+
+create_instance()
 
 
 def create_mask_img_instance():

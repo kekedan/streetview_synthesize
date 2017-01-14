@@ -18,14 +18,14 @@ tf.flags.DEFINE_string("model_dir", "/data/vllab1/checkpoint/context inpainting/
 tf.flags.DEFINE_string("result_dir", "./logs_inpainting/", "path to result directory")
 tf.flags.DEFINE_string("test_dir", "./test_inpainting/", "path to result directory")
 
-tf.flags.DEFINE_integer("batch_size", "16", "batch size for training")
-tf.flags.DEFINE_integer("sample_shape", "4", "for sample merge")
+tf.flags.DEFINE_integer("batch_size", "1", "batch size for training")
+tf.flags.DEFINE_integer("sample_shape", "1", "for sample merge")
 tf.flags.DEFINE_integer("image_size_h", "256", "height of the image")
 tf.flags.DEFINE_integer("image_size_w", "512", "width of the image")
 
 tf.flags.DEFINE_float("learning_rate", "3e-4", "Learning rate for Adam Optimizer")
 tf.flags.DEFINE_bool('debug', "False", "Debug mode: True/ False")
-tf.flags.DEFINE_string('mode', "train", "Mode train/ test/ visualize")
+tf.flags.DEFINE_string('mode', "test", "Mode train/ test/ visualize")
 
 
 is_train = tf.placeholder(tf.bool)
@@ -39,6 +39,7 @@ model = Model()
 bn1, bn2, bn3, bn4, bn5, bn6, debn4, debn3, debn2, debn1, reconstruction_ori, reconstruction \
     = model.build_reconstruction(images_hole, is_train)
 
+# TODO VAE ration
 mask_recon = images_mask
 mask_overlap = tf.ones_like(mask_recon) - mask_recon
 loss_recon_ori = tf.square(tf.subtract(images_tf, reconstruction))
@@ -47,14 +48,20 @@ loss_recon_hole = tf.reduce_mean(tf.reduce_sum(tf.multiply(mask_recon, loss_reco
 loss_recon_overlap = tf.reduce_mean(tf.reduce_sum(tf.multiply(mask_overlap, loss_recon_ori), [1, 2, 3]))
 loss_recon = tf.add(tf.scalar_mul(10, loss_recon_hole), loss_recon_overlap)
 
+# TODO check adv loss
 adversarial_pos = model.build_adversarial(images_tf, is_train)
 adversarial_neg = model.build_adversarial(reconstruction, is_train, reuse=True)
-adversarial_all = tf.concat(0, [adversarial_pos, adversarial_neg])
-labels_D = tf.concat(0, [tf.ones([FLAGS.batch_size]), tf.zeros([FLAGS.batch_size])])
-labels_G = tf.ones([FLAGS.batch_size])
-loss_adv_D = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(adversarial_all, labels_D))
-loss_adv_G = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(adversarial_neg, labels_G))
+#adversarial_all = tf.concat(0, [adversarial_pos, adversarial_neg])
+#labels_D = tf.concat(0, [tf.ones([FLAGS.batch_size]), tf.zeros([FLAGS.batch_size])])
+#labels_G = tf.ones([FLAGS.batch_size])
+#loss_adv_D = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(adversarial_all, labels_D))
+#loss_adv_G = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(adversarial_neg, labels_G))
+loss_adv_D_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(adversarial_pos, tf.ones([FLAGS.batch_size])))
+loss_adv_D_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(adversarial_neg, tf.zeros([FLAGS.batch_size])))
+loss_adv_D = loss_adv_D_real + loss_adv_D_fake
+loss_adv_G = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(adversarial_neg, tf.ones([FLAGS.batch_size])))
 
+# TODO vae and adv ration
 loss_G = loss_adv_G * lambda_adv + loss_recon * lambda_recon
 loss_D = loss_adv_D * lambda_adv
 
@@ -131,8 +138,7 @@ if FLAGS.mode == 'train':
                         is_train: True
                         })
 
-            # TODO ckeck loss
-            # TODO 10:1?
+            # TODO check adv ration
             if iters % 10 == 0:
                 _, loss_D_val, adv_pos_val, adv_neg_val, loss_adv_D_val = sess.run(
                         [train_op_D, loss_D, adversarial_pos, adversarial_neg, loss_adv_D],
@@ -145,10 +151,10 @@ if FLAGS.mode == 'train':
                                 })
                 # Printing activations every 10 iterations
                 print "Iter:", iters, "Recon Loss:", loss_recon_val, "Gen ADV Loss:", loss_adv_G_val, \
-                    "Dis ADV Loss:", loss_adv_D_val, "Gen Loss:", loss_G_val, "Dis Loss:", loss_D_val, "||||", \
+                    "Dis ADV Loss:", loss_adv_D_val, "|||", "Gen Loss:", loss_G_val, "Dis Loss:", loss_D_val, "||||", \
                     adv_pos_val.mean(), adv_neg_val.min(), adv_neg_val.max()
 
-            if iters % 150 == 0:
+            if iters % 200 == 0:
                 reconstruction_vals, recon_ori_vals, bn1_val,bn2_val,bn3_val,bn4_val,bn5_val,bn6_val,debn4_val, debn3_val, debn2_val, debn1_val, loss_G_val, loss_D_val = sess.run(
                         [reconstruction, reconstruction_ori, bn1,bn2,bn3,bn4,bn5,bn6,debn4, debn3, debn2, debn1, loss_G, loss_D],
                         feed_dict={
@@ -207,8 +213,11 @@ elif FLAGS.mode == 'test':
 
         sample_images_hole = (1 - sample_masks) * sample_images
 
-        reconstruction_vals, recon_ori_vals = sess.run(
-            [reconstruction, reconstruction_ori],
+        # TODO figure out what's going on hereQQ
+        saver.restore(sess, ckpt.model_checkpoint_path)
+        print("Model restored...{}".format(ckpt.model_checkpoint_path))
+        reconstruction_vals = sess.run(
+            reconstruction,
             feed_dict={
                 images_hole: sample_images_hole,
                 is_train: False
@@ -225,3 +234,37 @@ elif FLAGS.mode == 'test':
                           , merge(reconstruction_vals_ori, (FLAGS.sample_shape, FLAGS.sample_shape)))
         scipy.misc.imsave(os.path.join(FLAGS.test_dir, '{:d}_rec.png'.format(batch_itr))
                           , merge(reconstruction_vals, (FLAGS.sample_shape, FLAGS.sample_shape)))
+        scipy.misc.imsave(os.path.join('./out', '{}_leftImg8bit.png'.format(name))
+                          , merge(reconstruction_vals, (FLAGS.sample_shape, FLAGS.sample_shape)))
+
+elif FLAGS.mode == 'out':
+    file_obj = open(FLAGS.human_dir, 'r')
+    file_name = pickle.load(file_obj)
+    data_size = len(file_name)
+
+    for idx, name in enumerate(file_name):
+        print('[{:d}/{:d}]'.format(idx, data_size))
+
+        sample_images = np.array(scipy.misc.imread(
+            os.path.join(FLAGS.data_dir, 'fine_image', '{}_leftImg8bit.png'.format(name))).astype(np.float32))
+        sample_images = np.array(sample_images) / 255 * 2 - 1
+
+        sample_masks = np.array(read_mask(
+            os.path.join(FLAGS.data_dir, 'fine_mask', '{}_gtFine_labelIds.png'.format(name))).astype(np.float32))
+
+        sample_images_hole = (1 - sample_masks) * sample_images
+
+        reconstruction_vals = sess.run(
+            reconstruction,
+            feed_dict={
+                images_hole: [sample_images_hole],
+                is_train: False
+            })
+
+        samples = (255. * (sample_images + 1) / 2.).astype(int)
+        samples_hole = (255. * (sample_images_hole + 1) / 2.).astype(int)
+        reconstruction_vals_ori = (255. * (np.copy(reconstruction_vals) + 1) / 2.).astype(int)
+        #reconstruction = sample_masks * reconstruction_vals_ori + (1 - sample_masks) * samples
+
+        scipy.misc.imsave(os.path.join('./out', '{}_leftImg8bit.png'.format(name)), reconstruction_vals_ori[0, :, :, :])
+

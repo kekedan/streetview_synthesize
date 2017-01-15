@@ -7,25 +7,25 @@ from util import *
 n_epochs = 10000
 weight_decay_rate = 0.00001
 momentum = 0.9
-lambda_recon = 0.9
-lambda_adv = 0.1
+lambda_recon = 1
+lambda_adv = 1
 
 FLAGS = tf.flags.FLAGS
 tf.flags.DEFINE_string("data_dir", "/data/vllab1/dataset/CITYSCAPES/CITY/", "path to dataset")
 tf.flags.DEFINE_string("name_dir", "/data/vllab1/dataset/CITYSCAPES/CITY/extended_human_wo.pkl", "path to name")
 tf.flags.DEFINE_string("human_dir", "/data/vllab1/dataset/CITYSCAPES/CITY/human_w.pkl", "path to test name")
-tf.flags.DEFINE_string("model_dir", "/data/vllab1/checkpoint/context inpainting/inpainting/", "path to model directory")
-tf.flags.DEFINE_string("result_dir", "./logs_inpainting/", "path to result directory")
-tf.flags.DEFINE_string("test_dir", "./test_inpainting/", "path to result directory")
+tf.flags.DEFINE_string("model_dir", "/data/vllab1/checkpoint/context inpainting/inpainting_D/", "path to model directory")
+tf.flags.DEFINE_string("result_dir", "./logs_inpainting_D/", "path to result directory")
+tf.flags.DEFINE_string("test_dir", "./test_inpainting_D/", "path to result directory")
 
-tf.flags.DEFINE_integer("batch_size", "1", "batch size for training")
-tf.flags.DEFINE_integer("sample_shape", "1", "for sample merge")
+tf.flags.DEFINE_integer("batch_size", "16", "batch size for training")
+tf.flags.DEFINE_integer("sample_shape", "4", "for sample merge")
 tf.flags.DEFINE_integer("image_size_h", "256", "height of the image")
 tf.flags.DEFINE_integer("image_size_w", "512", "width of the image")
 
 tf.flags.DEFINE_float("learning_rate", "3e-4", "Learning rate for Adam Optimizer")
 tf.flags.DEFINE_bool('debug', "False", "Debug mode: True/ False")
-tf.flags.DEFINE_string('mode', "test", "Mode train/ test/ visualize")
+tf.flags.DEFINE_string('mode', "train", "Mode train/ test/ visualize")
 
 
 is_train = tf.placeholder(tf.bool)
@@ -46,7 +46,7 @@ loss_recon_ori = tf.square(tf.subtract(images_tf, reconstruction))
 #loss_recon = tf.reduce_mean(tf.reduce_sum(loss_recon_ori, [1, 2, 3]))
 loss_recon_hole = tf.reduce_mean(tf.reduce_sum(tf.multiply(mask_recon, loss_recon_ori), [1, 2, 3]))
 loss_recon_overlap = tf.reduce_mean(tf.reduce_sum(tf.multiply(mask_overlap, loss_recon_ori), [1, 2, 3]))
-loss_recon = tf.add(tf.scalar_mul(10, loss_recon_hole), loss_recon_overlap)
+loss_recon = tf.add(loss_recon_hole, loss_recon_overlap)
 
 # TODO check adv loss
 adversarial_pos = model.build_adversarial(images_tf, is_train)
@@ -139,7 +139,7 @@ if FLAGS.mode == 'train':
                         })
 
             # TODO check adv ration
-            if iters % 10 == 0:
+            if iters % 1 == 0:
                 _, loss_D_val, adv_pos_val, adv_neg_val, loss_adv_D_val = sess.run(
                         [train_op_D, loss_D, adversarial_pos, adversarial_neg, loss_adv_D],
                         feed_dict={
@@ -154,7 +154,7 @@ if FLAGS.mode == 'train':
                     "Dis ADV Loss:", loss_adv_D_val, "|||", "Gen Loss:", loss_G_val, "Dis Loss:", loss_D_val, "||||", \
                     adv_pos_val.mean(), adv_neg_val.min(), adv_neg_val.max()
 
-            if iters % 200 == 0:
+            if iters % 20 == 0:
                 reconstruction_vals, recon_ori_vals, bn1_val,bn2_val,bn3_val,bn4_val,bn5_val,bn6_val,debn4_val, debn3_val, debn2_val, debn1_val, loss_G_val, loss_D_val = sess.run(
                         [reconstruction, reconstruction_ori, bn1,bn2,bn3,bn4,bn5,bn6,debn4, debn3, debn2, debn1, loss_G, loss_D],
                         feed_dict={

@@ -216,7 +216,7 @@ def main(argv=None):
                     print("Step: %d, Train_loss:%g" % (step, train_loss))
                     # summary_writer.add_summary(summary_str, step)
 
-                if step % 20 == 0:
+                if step % 100 == 0:
                     # train_loss, summary_str = sess.run([loss, summary_op], feed_dict=feed_dict)
                     scipy.misc.imsave('logs/{:d}_image.png'.format(step), utils.merge(
                         np.array(train_images), SAMPLE_SHAPE))
@@ -231,7 +231,7 @@ def main(argv=None):
                         utils.merge(pred, SAMPLE_SHAPE, is_gray=True)))
                     # summary_writer.add_summary(summary_str, step)
 
-                if step % 100 == 0:
+                if step % 300 == 0:
                     # valid_images, valid_annotations = validation_dataset_reader.next_batch(FLAGS.batch_size)
                     # valid_loss = sess.run(loss, feed_dict={image: valid_images, annotation: valid_annotations,
                     #                                       keep_probability: 1.0})

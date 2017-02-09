@@ -310,49 +310,45 @@ def create_instance():
         objects = label_instance['objects']
         instance_num = 0
         mask_instance = []
+        mask_instance_sel = []
         for obj in objects:
             if obj['label'] == 'person':
                 #print(object['polygon'])
                 polygon = [tuple(poly) for poly in obj['polygon']]
-                img = Image.new('L', (2048, 1024), 0)
+                img = Image.new('F', (2048, 1024), 0)
                 ImageDraw.Draw(img).polygon(polygon, outline=1, fill=1)
                 img = scipy.misc.imresize(img, 0.25, interp='bilinear', mode=None)
                 mask = np.array(img)
+                mask[np.nonzero(mask > 0)] = 255
+                mask_instance.append(mask)
 
-                human_pixel = np.nonzero(mask == 1)
+                human_pixel = np.nonzero(mask == 255)
                 human_ratio = float(len(human_pixel[0])) / float((img.shape[0] * img.shape[1]))
-                #print('instance: {:d}, ratio:{:f}'.format(instance_num, human_ratio))
                 if human_ratio > alpha:
-                    mask_instance.append(mask)
-                    instance_num += 1
+                    mask_instance_sel.append(instance_num)
+                instance_num += 1
 
-                '''
-                    scipy.misc.imsave('/data/vllab1/dataset/CITYSCAPES/CITY/human_instance_image/{}_{:d}.png'.format(
-                        image_name.split('.')[0], instance_num), mask)
-
-                    img = np.copy(image)
-                    img[human_pixel + (0,)] = 0
-                    img[human_pixel + (1,)] = 255
-                    img[human_pixel + (2,)] = 0
-                    scipy.misc.imsave('/data/vllab1/dataset/CITYSCAPES/CITY/human_instance_mask/{}_{:d}.png'.format(
-                        image_name.split('.')[0], instance_num), img)
-                '''
         print(instance_num)
-        if instance_num > 10:
-            instance_num = 10
-        instance_array = np.arange(instance_num)
-        for c_idx in range(1, instance_num + 1):
-            instance_combine = list(itertools.combinations(instance_array, c_idx))
-            for i_idx, combine_list in enumerate(instance_combine):
-                if i_idx > 20:
-                    break
-                mask = np.zeros((256, 512), dtype=np.int8)
-                img = np.copy(image)
-                for ii_idx in combine_list:
-                    mask[np.nonzero(mask_instance[ii_idx] == 1)] = 1
 
-                mask_d = scipy.ndimage.morphology.binary_dilation(mask, iterations=2).astype(mask.dtype)
-                heatmap = mask_ori * (1 - mask_d)
+        instance_array = np.arange(instance_num)
+        for c_idx in range(0, instance_num):
+            # Cn0 + Cn1 + Cn2 + ... + Cn-1
+            instance_combine = list(itertools.combinations(instance_array, c_idx))
+            np.random.shuffle(instance_combine)
+            for i_idx, combine_list in enumerate(instance_combine):
+                if i_idx > 10:
+                    break
+                img = np.copy(image)
+                mask = np.zeros((256, 512), dtype=np.int8)
+                heatmap = np.zeros((256, 512), dtype=np.int8)
+                for m_idx, m in enumerate(mask_instance):
+                    if m_idx in combine_list:
+                        mask[np.nonzero(m == 255)] = 1
+                    else:
+                        heatmap[np.nonzero(m == 255)] = 1
+
+                #mask = scipy.ndimage.morphology.binary_dilation(mask, iterations=5).astype(mask.dtype)
+                # TODO mask too big and context inpainting color weired
                 mask = np.dstack((mask, mask, mask))
                 img_instace = img * mask + inpainting * (1 - mask)
 
@@ -362,7 +358,6 @@ def create_instance():
                     image_name.split('.')[0], c_idx, i_idx), heatmap)
 
 create_instance()
-
 
 def create_mask_img_instance():
     data = sorted(glob(os.path.join('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/image', "*.png")))
@@ -551,4 +546,3 @@ def load_batch_with_name():
         index += 1
 
     scipy.misc.imsave('extended_human.png', merge(mask, (2,2), is_gray=True))
-

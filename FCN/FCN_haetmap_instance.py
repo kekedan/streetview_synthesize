@@ -10,6 +10,7 @@ from six.moves import xrange
 
 FLAGS = tf.flags.FLAGS
 tf.flags.DEFINE_string("data_dir", "../../../dataset/CITYSCAPES/CITY/instance_image_context", "path to dataset")
+tf.flags.DEFINE_string("data2_dir", "../../../dataset/CITYSCAPES/CITY/instance_image_exemplar", "path to dataset")
 tf.flags.DEFINE_string("label_dir", "../../../dataset/CITYSCAPES/CITY/instance_heatmap_context", "path to annotation")
 tf.flags.DEFINE_string("model_dir", "../../../checkpoint/", "Path to vgg model mat")
 tf.flags.DEFINE_string("logs_dir", "../../../checkpoint/FCN/heatmap_instance_context/", "path to logs directory")
@@ -17,7 +18,7 @@ tf.flags.DEFINE_string("logs_dir", "../../../checkpoint/FCN/heatmap_instance_con
 tf.flags.DEFINE_integer("batch_size", "9", "batch size for training")
 tf.flags.DEFINE_float("learning_rate", "1e-4", "Learning rate for Adam Optimizer")
 tf.flags.DEFINE_bool('debug', "False", "Debug mode: True/ False")
-tf.flags.DEFINE_string('mode', "train", "Mode train/ test/ visualize")
+tf.flags.DEFINE_string('mode', "test", "Mode train/ test/ visualize")
 
 MODEL_URL = 'http://www.vlfeat.org/matconvnet/models/beta16/imagenet-vgg-verydeep-19.mat'
 
@@ -174,6 +175,8 @@ def main(argv=None):
 
     # TODO next batch file name suffle
     data = sorted(glob(os.path.join(FLAGS.data_dir, "*.png")))
+    data2 = sorted(glob(os.path.join(FLAGS.data2_dir, "*.png")))
+    data += data2
     train_size = len(data)
 
     gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=1)

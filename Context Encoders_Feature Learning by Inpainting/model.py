@@ -104,7 +104,7 @@ class Model():
             normed = tf.nn.batch_norm_with_global_normalization(bottom, mean, var, beta, gamma, epsilon, False)
         return normed
 
-    def build_reconstruction( self, images, is_train ):
+    def build_reconstruction( self, images, is_train):
         batch_size = images.get_shape().as_list()[0]
 
         with tf.variable_scope('GEN'):

@@ -25,7 +25,7 @@ tf.flags.DEFINE_integer("image_size_w", "512", "width of the image")
 
 tf.flags.DEFINE_float("learning_rate", "3e-4", "Learning rate for Adam Optimizer")
 tf.flags.DEFINE_bool('debug', "False", "Debug mode: True/ False")
-tf.flags.DEFINE_string('mode', "test", "Mode train/ test/ visualize")
+tf.flags.DEFINE_string('mode', "train", "Mode train/ test/ visualize")
 
 
 is_train = tf.placeholder(tf.bool)

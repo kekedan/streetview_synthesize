@@ -1,76 +1,69 @@
+import tensorflow as tf
+import numpy as np
 import os
 from glob import glob
 import scipy
-from model import *
+import vae
 from util import *
 
-n_epochs = 10000
-weight_decay_rate = 0.00001
-momentum = 0.9
-lambda_recon = 0.9
-lambda_adv = 0.1
-
 FLAGS = tf.flags.FLAGS
-tf.flags.DEFINE_string("data_dir", "../../../dataset/CITYSCAPES/CITY/", "path to dataset")
-tf.flags.DEFINE_string("name_dir", "../../../dataset/CITYSCAPES/CITY/extended_human_wo.pkl", "path to name")
-tf.flags.DEFINE_string("human_dir", "../../../dataset/CITYSCAPES/CITY/human_w.pkl", "path to test name")
-tf.flags.DEFINE_string("model_dir", "../../../checkpoint/context inpainting/inpainting_D/", "path to model directory")
-tf.flags.DEFINE_string("result_dir", "./logs_inpainting_D/", "path to result directory")
-tf.flags.DEFINE_string("test_dir", "./test_inpainting_D/", "path to result directory")
+tf.flags.DEFINE_string('mode', "train", "Mode train/ test/ visualize")
+
+tf.flags.DEFINE_string("data_dir", "../../../dataset/CITYSCAPES/CITY/instance_image_context", "path to dataset")
+tf.flags.DEFINE_string("data2_dir", "../../../dataset/CITYSCAPES/CITY/instance_image_exemplar", "path to dataset2")
+tf.flags.DEFINE_string("label_dir", "../../../dataset/CITYSCAPES/CITY/instance_heatmap_context", "path to annotation")
+tf.flags.DEFINE_string("model_dir", "../../../checkpoint/context inpainting/relative/", "path to model directory")
+tf.flags.DEFINE_string("result_dir", "./logs_relative/", "path to result directory")
+tf.flags.DEFINE_string("test_dir", "./test_relative/", "path to result directory")
 
 tf.flags.DEFINE_integer("batch_size", "16", "batch size for training")
 tf.flags.DEFINE_integer("sample_shape", "4", "for sample merge")
 tf.flags.DEFINE_integer("image_size_h", "256", "height of the image")
 tf.flags.DEFINE_integer("image_size_w", "512", "width of the image")
 
+tf.flags.DEFINE_integer("n_epochs", "10000", "number of epochs")
+tf.flags.DEFINE_float("weight_decay_rate", "1e-5", "weight_decay_rate")
+tf.flags.DEFINE_float("momentum", "0.9", "momentum")
+tf.flags.DEFINE_float("lambda_recon", "0.9", "lambda_recon")
+tf.flags.DEFINE_float("lambda_adv", "0.1", "lambda_adv")
 tf.flags.DEFINE_float("learning_rate", "3e-4", "Learning rate for Adam Optimizer")
 tf.flags.DEFINE_bool('debug', "False", "Debug mode: True/ False")
-tf.flags.DEFINE_string('mode', "train", "Mode train/ test/ visualize")
 
+if not os.path.exists(FLAGS.model_dir):
+    os.makedirs(FLAGS.model_dir)
+if not os.path.exists(FLAGS.result_dir):
+    os.makedirs(FLAGS.result_dir)
+if not os.path.exists(FLAGS.test_dir):
+    os.makedirs(FLAGS.test_dir)
 
 is_train = tf.placeholder(tf.bool)
 learning_rate = tf.placeholder(tf.float32, [])
 
-images_tf = tf.placeholder(tf.float32, [FLAGS.batch_size, FLAGS.image_size_h, FLAGS.image_size_w, 3], name="images")
-images_hole = tf.placeholder(tf.float32, [FLAGS.batch_size, FLAGS.image_size_h, FLAGS.image_size_w, 3], name="images_hole")
-images_mask = tf.placeholder(tf.float32, [FLAGS.batch_size, FLAGS.image_size_h, FLAGS.image_size_w, 3], name='images_mask')
+images = tf.placeholder(tf.float32, [FLAGS.batch_size, FLAGS.image_size_h, FLAGS.image_size_w, 3], name="images")
+heatmap_gt = tf.placeholder(tf.float32, [FLAGS.batch_size, FLAGS.image_size_h, FLAGS.image_size_w, 2], name="heatmap_gt")
 
-model = Model()
-bn1, bn2, bn3, bn4, bn5, bn6, debn4, debn3, debn2, debn1, reconstruction_ori, reconstruction \
-    = model.build_reconstruction(images_hole, is_train)
+model = vae.Model()
+bn1, bn2, bn3, bn4, bn5, bn6, debn4, debn3, debn2, debn1, heatmap_ori, heatmap \
+    = model.build_heatmap(images, is_train)
 
-# TODO VAE ration
-mask_recon = images_mask
-mask_overlap = tf.ones_like(mask_recon) - mask_recon
-loss_recon_ori = tf.square(tf.subtract(images_tf, reconstruction))
-#loss_recon = tf.reduce_mean(tf.reduce_sum(loss_recon_ori, [1, 2, 3]))
-loss_recon_hole = tf.reduce_mean(tf.reduce_sum(tf.multiply(mask_recon, loss_recon_ori), [1, 2, 3]))
-loss_recon_overlap = tf.reduce_mean(tf.reduce_sum(tf.multiply(mask_overlap, loss_recon_ori), [1, 2, 3]))
-loss_recon = tf.add(loss_recon_hole, loss_recon_overlap * 10)
+loss_recon = tf.reduce_mean((tf.nn.softmax_cross_entropy_with_logits(heatmap_ori, heatmap_gt)))
 
-# TODO check adv loss
-adversarial_pos = model.build_adversarial(images_tf, is_train)
-adversarial_neg = model.build_adversarial(reconstruction, is_train, reuse=True)
-#adversarial_all = tf.concat(0, [adversarial_pos, adversarial_neg])
-#labels_D = tf.concat(0, [tf.ones([FLAGS.batch_size]), tf.zeros([FLAGS.batch_size])])
-#labels_G = tf.ones([FLAGS.batch_size])
-#loss_adv_D = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(adversarial_all, labels_D))
-#loss_adv_G = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(adversarial_neg, labels_G))
+adversarial_pos = model.build_adversarial(heatmap_gt, is_train)
+adversarial_neg = model.build_adversarial(heatmap, is_train, reuse=True)
 loss_adv_D_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(adversarial_pos, tf.ones([FLAGS.batch_size])))
 loss_adv_D_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(adversarial_neg, tf.zeros([FLAGS.batch_size])))
-loss_adv_D = loss_adv_D_real + loss_adv_D_fake
+loss_adv_D = tf.add(loss_adv_D_real, loss_adv_D_fake)
 loss_adv_G = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(adversarial_neg, tf.ones([FLAGS.batch_size])))
 
-# TODO vae and adv ration
-loss_G = loss_adv_G * lambda_adv + loss_recon * lambda_recon
-loss_D = loss_adv_D * lambda_adv
+loss_G = tf.add(tf.mul(loss_adv_G, FLAGS.lambda_adv), tf.mul(loss_recon, FLAGS.lambda_recon))
+loss_D = tf.mul(loss_adv_D, FLAGS.lambda_adv)
 
 var_G = filter(lambda x: x.name.startswith('GEN'), tf.trainable_variables())
 var_D = filter(lambda x: x.name.startswith('DIS'), tf.trainable_variables())
 W_G = filter(lambda x: x.name.endswith('W:0'), var_G)
 W_D = filter(lambda x: x.name.endswith('W:0'), var_D)
-loss_G += weight_decay_rate * tf.reduce_mean(tf.pack(map(lambda x: tf.nn.l2_loss(x), W_G)))
-loss_D += weight_decay_rate * tf.reduce_mean(tf.pack(map(lambda x: tf.nn.l2_loss(x), W_D)))
+loss_G += FLAGS.weight_decay_rate * tf.reduce_mean(tf.pack(map(lambda x: tf.nn.l2_loss(x), W_G)))
+loss_D += FLAGS.weight_decay_rate * tf.reduce_mean(tf.pack(map(lambda x: tf.nn.l2_loss(x), W_D)))
 
 
 # TODO check gradients
@@ -96,44 +89,33 @@ else:
 if FLAGS.mode == 'train':
     iters = 0
 
-    # streetview without human
-    file_obj = open(FLAGS.name_dir, 'r')
-    file_name = pickle.load(file_obj)
-    train_size = len(file_name)
+    # TODO next batch file name suffle
+    data = sorted(glob(os.path.join(FLAGS.data_dir, "*.png")))
+    #data2 = sorted(glob(os.path.join(FLAGS.data2_dir, "*.png")))
+    #data += data2
+    train_size = len(data)
 
-    # random human mask
-    file_obj = open(FLAGS.human_dir, 'r')
-    mask_name = pickle.load(file_obj)
-    mask_size = len(mask_name)
-    mask_name = np.repeat(mask_name, (train_size/mask_size) + 1)
-
-    for epoch in range(n_epochs):
-        np.random.shuffle(file_name)
-        np.random.shuffle(mask_name)
+    for epoch in range(FLAGS.n_epochs):
+        np.random.shuffle(data)
 
         for batch_itr in xrange(train_size / FLAGS.batch_size):
-            print('[{:d}/{:d}] [{:d}/{:d}]'.format(epoch, n_epochs, batch_itr, train_size / FLAGS.batch_size))
-            batch_images_name = file_name[batch_itr * FLAGS.batch_size:(batch_itr + 1) * FLAGS.batch_size]
-            batch_masks_name = mask_name[batch_itr * FLAGS.batch_size:(batch_itr + 1) * FLAGS.batch_size]
+            print('[{:d}/{:d}] [{:d}/{:d}]'.format(epoch, FLAGS.n_epochs, batch_itr, train_size / FLAGS.batch_size))
+            train_images_name = data[batch_itr * FLAGS.batch_size:(batch_itr + 1) * FLAGS.batch_size]
 
-            train_images = np.array([scipy.misc.imread(
-                os.path.join(FLAGS.data_dir, 'coarse_image', '{}_leftImg8bit.png'.format(name))).astype(np.float32)
-                                    for name in batch_images_name])
+            train_images = [scipy.misc.imread(train_image_name).astype(np.float32)
+                            for train_image_name in train_images_name]
             train_images = np.array(train_images) / 255 * 2 - 1
 
-            train_masks = np.array([read_mask(
-                os.path.join(FLAGS.data_dir, 'fine_mask', '{}_gtFine_labelIds.png'.format(name))).astype(np.float32)
-                                    for name in batch_masks_name])
-
-            train_images_hole = (1 - train_masks) * train_images
-
+            # Is this the normal way?
+            train_annotations = np.array([np.dstack((1 - scipy.misc.imread(os.path.join(FLAGS.label_dir, train_annotation_name.split('/')[-1])).astype(np.float32) / 255,
+                                            scipy.misc.imread(os.path.join(FLAGS.label_dir, train_annotation_name.split('/')[-1])).astype(np.float32) / 255))
+                                 for train_annotation_name in train_images_name])
             # Generative Part is updated every iteration
             _, loss_G_val, adv_pos_val, adv_neg_val, loss_recon_val, loss_adv_G_val, reconstruction_vals, recon_ori_vals, bn1_val,bn2_val,bn3_val,bn4_val,bn5_val,bn6_val,debn4_val, debn3_val, debn2_val, debn1_val = sess.run(
-                    [train_op_G, loss_G, adversarial_pos, adversarial_neg, loss_recon, loss_adv_G, reconstruction, reconstruction_ori, bn1,bn2,bn3,bn4,bn5,bn6,debn4, debn3, debn2, debn1],
+                    [train_op_G, loss_G, adversarial_pos, adversarial_neg, loss_recon, loss_adv_G, heatmap, heatmap_ori, bn1,bn2,bn3,bn4,bn5,bn6,debn4, debn3, debn2, debn1],
                     feed_dict={
-                        images_tf: train_images,
-                        images_mask: train_masks,
-                        images_hole: train_images_hole,
+                        images: train_images,
+                        heatmap_gt: train_annotations,
                         learning_rate: FLAGS.learning_rate,
                         is_train: True
                         })
@@ -143,12 +125,11 @@ if FLAGS.mode == 'train':
                 _, loss_D_val, adv_pos_val, adv_neg_val, loss_adv_D_val = sess.run(
                         [train_op_D, loss_D, adversarial_pos, adversarial_neg, loss_adv_D],
                         feed_dict={
-                            images_tf: train_images,
-                            images_mask: train_masks,
-                            images_hole: train_images_hole,
+                            images: train_images,
+                            heatmap_gt: train_annotations,
                             learning_rate: FLAGS.learning_rate,
                             is_train: True
-                                })
+                            })
                 # Printing activations every 10 iterations
                 print "Iter:", iters, "Recon Loss:", loss_recon_val, "Gen ADV Loss:", loss_adv_G_val, \
                     "Dis ADV Loss:", loss_adv_D_val, "|||", "Gen Loss:", loss_G_val, "Dis Loss:", loss_D_val, "||||", \
@@ -156,27 +137,28 @@ if FLAGS.mode == 'train':
 
             if iters % 100 == 0:
                 reconstruction_vals, recon_ori_vals, bn1_val,bn2_val,bn3_val,bn4_val,bn5_val,bn6_val,debn4_val, debn3_val, debn2_val, debn1_val, loss_G_val, loss_D_val = sess.run(
-                        [reconstruction, reconstruction_ori, bn1,bn2,bn3,bn4,bn5,bn6,debn4, debn3, debn2, debn1, loss_G, loss_D],
+                        [heatmap, heatmap_ori, bn1,bn2,bn3,bn4,bn5,bn6,debn4, debn3, debn2, debn1, loss_G, loss_D],
                         feed_dict={
-                            images_tf: train_images,
-                            images_mask: train_masks,
-                            images_hole: train_images_hole,
+                            images: train_images,
+                            heatmap_gt: train_annotations,
                             is_train: False
                             })
 
                 samples = (255. * (train_images + 1) / 2.).astype(int)
-                samples_hole = (255. * (train_images_hole + 1) / 2.).astype(int)
-                reconstruction_vals_ori = (255. * (reconstruction_vals + 1) / 2.).astype(int)
-                reconstruction_vals = train_masks * reconstruction_vals_ori + (1 - train_masks) * samples
+                samples_annotation = (255. * train_annotations).astype(int)
+                annotation_pred = np.argmax(reconstruction_vals, axis=3) * 255
+                #samples_hole = (255. * (train_images_hole + 1) / 2.).astype(int)
+                #reconstruction_vals_ori = (255. * (reconstruction_vals + 1) / 2.).astype(int)
+                #reconstruction_vals = train_masks * reconstruction_vals_ori + (1 - train_masks) * samples
 
-                scipy.misc.imsave(os.path.join(FLAGS.result_dir, '{:d}_ori.png'.format(iters/10))
+                scipy.misc.imsave(os.path.join(FLAGS.result_dir, '{:d}_image.png'.format(iters/10))
                                   , merge(samples, (FLAGS.sample_shape, FLAGS.sample_shape)))
-                scipy.misc.imsave(os.path.join(FLAGS.result_dir, '{:d}_ori_hole.png'.format(iters/10))
-                                  , merge(samples_hole, (FLAGS.sample_shape, FLAGS.sample_shape)))
-                scipy.misc.imsave(os.path.join(FLAGS.result_dir, '{:d}_rec_ori.png'.format(iters/10))
-                                  , merge(reconstruction_vals_ori, (FLAGS.sample_shape, FLAGS.sample_shape)))
-                scipy.misc.imsave(os.path.join(FLAGS.result_dir, '{:d}_rec.png'.format(iters/10))
-                                  , merge(reconstruction_vals, (FLAGS.sample_shape, FLAGS.sample_shape)))
+                scipy.misc.imsave(os.path.join(FLAGS.result_dir, '{:d}_heatmap.png'.format(iters/10))
+                                  , merge(annotation_pred, (FLAGS.sample_shape, FLAGS.sample_shape), is_gray=True))
+                scipy.misc.imsave(os.path.join(FLAGS.result_dir, '{:d}_gt_bg.png'.format(iters/10))
+                                  , merge(samples_annotation[:, :, :, 0], (FLAGS.sample_shape, FLAGS.sample_shape), is_gray=True))
+                scipy.misc.imsave(os.path.join(FLAGS.result_dir, '{:d}_gt_fg.png'.format(iters/10))
+                                  , merge(samples_annotation[:, :, :, 1], (FLAGS.sample_shape, FLAGS.sample_shape), is_gray=True))
 
                 if np.isnan(reconstruction_vals.min() ) or np.isnan(reconstruction_vals.max()):
                     print "NaN detected!!"

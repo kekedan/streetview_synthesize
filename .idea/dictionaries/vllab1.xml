@@ -1,7 +1,14 @@
 <component name="ProjectDictionaryState">
   <dictionary name="vllab1">
     <words>
+      <w>argmax</w>
       <w>ckpt</w>
+      <w>classess</w>
+      <w>conv</w>
+      <w>deconv</w>
+      <w>logits</w>
+      <w>pred</w>
+      <w>relu</w>
       <w>testset</w>
     </words>
   </dictionary>

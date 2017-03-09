@@ -284,14 +284,22 @@ def main(argv=None):
                 scipy.misc.imread(val_image_name).astype(np.uint8), 0.25, interp='bilinear', mode=None)
                             for val_image_name in val_images_name]
 
-            pred = sess.run(pred_annotation, feed_dict={image: val_images, keep_probability: 1.0})
+            pred, heatmap = sess.run([pred_annotation, logits], feed_dict={image: val_images, keep_probability: 1.0})
+            heatmap_s = heatmap[:,:,:,1]
+            smin = heatmap_s.min()
+            heatmap_s -= smin
+            heatmap_s = heatmap_s * heatmap_s
             #valid_annotations = [np.squeeze(valid_annotations, axis=3)]
             pred = np.squeeze(pred, axis=3)
+            #heatmap = np.copy(logits[:,:,:,1])
 
             scipy.misc.imsave('test/{:d}_image.png'.format(batch_itr), utils.merge(
                 np.array(val_images), SAMPLE_SHAPE))
             scipy.misc.imsave('test/{:d}_pred.png'.format(batch_itr), utils.heatmap_visualize(
                 utils.merge(pred, SAMPLE_SHAPE, is_gray=True)))
+            import math
+            scipy.misc.imsave('test/{:d}_logit.png'.format(batch_itr), utils.heatmap_visualize(
+                utils.merge(heatmap_s * heatmap_s, SAMPLE_SHAPE, is_gray=True)))
         #utils.save_image(pred[itr].astype(np.uint8), FLAGS.logs_dir, name="pred_" + str(5 + itr))
 
 

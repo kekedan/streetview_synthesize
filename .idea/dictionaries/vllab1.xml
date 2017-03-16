@@ -6,6 +6,7 @@
       <w>classess</w>
       <w>conv</w>
       <w>deconv</w>
+      <w>inpainting</w>
       <w>logits</w>
       <w>pred</w>
       <w>relu</w>

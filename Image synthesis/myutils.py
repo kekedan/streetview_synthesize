@@ -2,6 +2,7 @@ import os
 from glob import glob
 import numpy as np
 import scipy.misc
+import h5py
 labels = [
     (  0,  0,  0),
     (  0,  0,  0),
@@ -39,6 +40,10 @@ labels = [
     (119, 11, 32),
     (  0,  0,142)
 ]
+
+
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
 
 
 def label_visualize(img):
@@ -84,6 +89,8 @@ def directory_check(flags):
         os.makedirs(flags.result_dir)
     if not os.path.exists(flags.logs_dir):
         os.makedirs(flags.logs_dir)
+    if not os.path.exists(flags.valid_dir):
+        os.makedirs(flags.valid_dir)
     if not os.path.exists(flags.test_dir):
         os.makedirs(flags.test_dir)
     if not os.path.exists(flags.model_dir):
@@ -106,6 +113,34 @@ def initialize_and_saver():
         print('No model founded')
 
     return sess, saver
+
+
+def test_check(flags, name, test_image, pred, heatmap):
+    merge_shape = (flags.sample_shape, flags.sample_shape)
+    name = name.split('/')[-1]
+    name = name.split('.')[0]
+
+    scipy.misc.imsave(os.path.join(flags.test_dir, '{}_target_image.png'.format(name)),
+                      merge(np.array(test_image), merge_shape, is_gray=False))
+    scipy.misc.imsave(os.path.join(flags.test_dir, '{}_target_pred.png'.format(name)),
+                      merge(pred, merge_shape, is_gray=True))
+    scipy.misc.imsave(os.path.join(flags.test_dir, '{}_target_heatmap.png'.format(name)),
+                      merge(heatmap, merge_shape, is_gray=True))
+
+
+def valid_check(flags, name, valid_image, pred, heatmap, gt):
+    merge_shape = (flags.sample_shape, flags.sample_shape)
+    name = name.split('/')[-1]
+    name = name.split('.')[0]
+
+    scipy.misc.imsave(os.path.join(flags.valid_dir, '{}_valid_image.png'.format(name)),
+                      merge(np.array(valid_image), merge_shape, is_gray=False))
+    scipy.misc.imsave(os.path.join(flags.valid_dir, '{}_valid_gt.png'.format(name)),
+                      merge(gt, merge_shape, is_gray=True))
+    #scipy.misc.imsave(os.path.join(flags.valid_dir, '{}_valid_pred.png'.format(name)),
+    #                  merge(pred, merge_shape, is_gray=True))
+    scipy.misc.imsave(os.path.join(flags.valid_dir, '{}_valid_heatmap.png'.format(name)),
+                      merge(heatmap, merge_shape, is_gray=True))
 
 
 def logs_check(flags, train_step, target_images, target_heatmaps, target_semantics, pred):
@@ -141,19 +176,13 @@ class InputFetcher(object):
         self.data_source, self.data_source_mask, self.data_target, self.train_size, self.batch_size = \
             [], [], [], 0, 0
 
-        self.get_input_files_name(size)
+        self.get_input_files_name()
 
-    def get_input_files_name(self, size=None):
-        if size is None:
-            self.data_source = sorted(glob(os.path.join(self.FLAGS.source_dir, "*.png")))
-            self.data_source_mask = sorted(glob(os.path.join(self.FLAGS.source_mask_dir, "*.png")))
+    def get_input_files_name(self):
+        self.data_source = sorted(glob(os.path.join(self.FLAGS.source_dir, "*.png")))
+        self.data_source_mask = sorted(glob(os.path.join(self.FLAGS.source_mask_dir, "*.png")))
 
-            self.data_target = sorted(glob(os.path.join(self.FLAGS.target_dir, "*.png")))
-        else:
-            self.data_source = sorted(glob(os.path.join(self.FLAGS.source_dir, "*.png")))
-            self.data_source_mask = sorted(glob(os.path.join(self.FLAGS.source_mask_dir, "*.png")))
-
-            self.data_target = sorted(glob(os.path.join(self.FLAGS.target_dir, "*.png")))
+        self.data_target = sorted(glob(os.path.join(self.FLAGS.target_dir, "*.png")))
 
         self.train_size = len(self.data_target)
         self.batch_size = self.train_size / self.FLAGS.batch_size
@@ -171,6 +200,7 @@ class InputFetcher(object):
             scipy.misc.imread(os.path.join(self.FLAGS.target_heatmap_dir, target_image_name.split('/')[-1])).astype(
                 np.float32)
             for target_image_name in target_images_name]
+
         # TODO : better way
         target_heatmaps = np.array(target_heatmaps) / 255
         yo = np.expand_dims(target_heatmaps, axis=3)

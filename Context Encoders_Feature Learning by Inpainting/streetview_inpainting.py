@@ -18,8 +18,8 @@ tf.flags.DEFINE_string("model_dir", "../../../checkpoint/context inpainting/inpa
 tf.flags.DEFINE_string("result_dir", "./logs_inpainting_D/", "path to result directory")
 tf.flags.DEFINE_string("test_dir", "./test_inpainting_D/", "path to result directory")
 
-tf.flags.DEFINE_integer("batch_size", "16", "batch size for training")
-tf.flags.DEFINE_integer("sample_shape", "4", "for sample merge")
+tf.flags.DEFINE_integer("batch_size", "1", "batch size for training")
+tf.flags.DEFINE_integer("sample_shape", "1", "for sample merge")
 tf.flags.DEFINE_integer("image_size_h", "256", "height of the image")
 tf.flags.DEFINE_integer("image_size_w", "512", "width of the image")
 
@@ -235,7 +235,7 @@ elif FLAGS.mode == 'test':
         scipy.misc.imsave(os.path.join(FLAGS.test_dir, '{:d}_rec.png'.format(batch_itr))
                           , merge(reconstruction_vals, (FLAGS.sample_shape, FLAGS.sample_shape)))
         scipy.misc.imsave(os.path.join('./out', '{}_leftImg8bit.png'.format(name))
-                          , merge(reconstruction_vals, (FLAGS.sample_shape, FLAGS.sample_shape)))
+                          , merge(reconstruction_vals, (FLAGS.sample_shape, FLAGS.sample_shape)).astype(np.uint8))
 
 elif FLAGS.mode == 'out':
     file_obj = open(FLAGS.human_dir, 'r')

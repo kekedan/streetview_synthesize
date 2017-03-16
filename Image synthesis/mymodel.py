@@ -128,8 +128,8 @@ def conv2d(input_, output_dim, k_h=5, k_w=5, d_h=2, d_w=2, stddev=0.02, name="co
 
         biases = tf.get_variable('biases', [output_dim], initializer=tf.constant_initializer(0.0))
         # TODO is this needed?
-        conv = tf.reshape(tf.nn.bias_add(conv, biases), conv.get_shape())
-        # conv = tf.nn.bias_add(conv, biases)
+        #conv = tf.reshape(tf.nn.bias_add(conv, biases), conv.get_shape())
+        conv = tf.nn.bias_add(conv, biases)
 
         return conv
 

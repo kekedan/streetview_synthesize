@@ -38,8 +38,8 @@ def blend(img_target, img_source, img_mask, offset=(0, 0)):
     # clip and normalize mask image
     img_mask = img_mask[region_source[0]:region_source[2], region_source[1]:region_source[3]]
     #img_mask = prepare_mask(img_mask)
-    #img_mask[img_mask==0] = False
-    #img_mask[img_mask!=False] = True
+    img_mask[img_mask==0] = False
+    img_mask[img_mask!=False] = True
 
     # create coefficient matrix
     A = scipy.sparse.identity(np.prod(region_size), format='lil')

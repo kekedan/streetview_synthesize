@@ -14,20 +14,20 @@ tf.flags.DEFINE_string("source_mask_dir",
                        "../../dataset/PedCut2013_SegmentationDataset/data/completeData/left_groundTruth/",
                        "Directory name to read the source mask images")
 
-tf.flags.DEFINE_string("target_dir", "../../dataset/Relative/train/relative_combine_low_image",
+tf.flags.DEFINE_string("target_dir", "../../dataset/Relative/train/relative_combine_image",
                        "Directory name to read the target images")
-tf.flags.DEFINE_string("target_heatmap_dir", "../../dataset/Relative/train/relative_combine_low_heatmap",
+tf.flags.DEFINE_string("target_heatmap_dir", "../../dataset/Relative/train/relative_combine_heatmap",
                        "Directory name to read the target heatmap")
 tf.flags.DEFINE_string("target_semantic_dir", "../../dataset/CITYSCAPES/CITY/relative_heatmap",
                        "Directory name to read the target semantic")
 
-tf.flags.DEFINE_string("result_dir", "./result_D_low/", "Directory name to the result")
-tf.flags.DEFINE_string("logs_dir", "./logs_D_low/", "Directory name to the logs")
-tf.flags.DEFINE_string("valid_dir", "./valid_D_low/", "Directory name to the logs")
-tf.flags.DEFINE_string("test_dir", "./test_D_low/", "Directory name to the test")
+tf.flags.DEFINE_string("result_dir", "./result_D/", "Directory name to the result")
+tf.flags.DEFINE_string("logs_dir", "./logs_D/", "Directory name to the logs")
+tf.flags.DEFINE_string("valid_dir", "./valid_D/", "Directory name to the logs")
+tf.flags.DEFINE_string("test_dir", "./test_D/", "Directory name to the test")
 
 tf.flags.DEFINE_string("vgg_dir", "../../checkpoint/", "Path to vgg model mat")
-tf.flags.DEFINE_string("model_dir", "../../checkpoint/image synthesis/relative_combine_D_low", "path to model directory")
+tf.flags.DEFINE_string("model_dir", "../../checkpoint/image synthesis/relative_combine_D", "path to model directory")
 
 tf.flags.DEFINE_integer("batch_size", 9, "batch size for training")
 tf.flags.DEFINE_integer("sample_shape", 3, "The size of sample images [1]")
@@ -39,8 +39,8 @@ tf.flags.DEFINE_string('mode', "train", "Mode train/ test/ visualize")
 
 MAX_ITERATION = int(2e4 + 1)
 NUM_OF_CLASSESS = 2
-IMAGE_SIZE_h = 128
-IMAGE_SIZE_w = 256
+IMAGE_SIZE_h = 256
+IMAGE_SIZE_w = 512
 
 
 def train(loss_val, var_list):
@@ -189,7 +189,7 @@ def main():
             val_images_name = data[batch_itr * FLAGS.batch_size:(batch_itr + 1) * FLAGS.batch_size]
 
             val_images = [scipy.misc.imresize(
-                scipy.misc.imread(val_image_name).astype(np.float32), 0.125, interp='bilinear', mode=None)
+                scipy.misc.imread(val_image_name).astype(np.float32), 0.25, interp='bilinear', mode=None)
                             for val_image_name in val_images_name]
 
             pred, heatmap = sess.run([pred_annotation, logits], feed_dict={image: val_images, keep_probability: 1.0})

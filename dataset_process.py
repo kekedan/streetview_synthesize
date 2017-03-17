@@ -7,6 +7,7 @@ import os
 import itertools
 from scipy.ndimage.filters import gaussian_filter
 import skimage.measure
+import poissonblending
 
 from utils import *
 import h5py
@@ -250,6 +251,19 @@ def label_visualize(img_dir):
         visual[index + (2,)] = labels[i][2]
 
     scipy.misc.imsave('./' + img_dir.split('/')[-1], visual)
+
+
+def semantic_vidualize(img):
+    yo = np.nonzero(img == 1)
+    visual = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
+
+    for i in range(0, 34):
+        index = np.nonzero(img == i)
+        visual[index + (0,)] = labels[i][0]
+        visual[index + (1,)] = labels[i][1]
+        visual[index + (2,)] = labels[i][2]
+
+    return visual
 
 
 def create_mask_img():
@@ -691,11 +705,19 @@ def heatmap_alpha():
 
 
 def synthesis_visual():
-    dir = '/data/vllab1/Github/streetview_synthesize/ICCV/context'
+    dir = '/data/vllab1/Github/streetview_synthesize/Image synthesis/test'
+    image_name = sorted(glob(os.path.join(dir, "*_image.png")))
+    dir = '/data/vllab1/Github/streetview_synthesize/Image synthesis/test_low'
+    heatmap_name = sorted(glob(os.path.join(dir, "*_heatmap.png")))
+    dir = '/data/vllab1/dataset/CITYSCAPES/gtFine_trainvaltest/gtFine/val'
+    semantic_name = []
+    for folder in os.listdir(dir):
+        path = os.path.join(dir, folder, "*_labelIds.png")
+        semantic_name.extend(glob(path))
+    semantic_name = sorted(semantic_name)
+
     ped_dir = '/data/vllab1/dataset/pedestrian/CITYSCAPES/image'
     mask_dir = '/data/vllab1/dataset/pedestrian/CITYSCAPES/mask'
-    image_name = sorted(glob(os.path.join(dir, "*_image.png")))
-    heatmap_name = sorted(glob(os.path.join(dir, "*_heatmap.png")))
     pedestrian_name = sorted(glob(os.path.join(ped_dir, "*.png")))
     mask_name = sorted(glob(os.path.join(mask_dir, "*.png")))
     data_len = len(heatmap_name)
@@ -705,19 +727,20 @@ def synthesis_visual():
 
         name = image_name[i].split('/')[-1]
         name = name.split('.')[0]
+	city = name[i].split('_')[0]
 
         image = scipy.misc.imread(image_name[i]).astype(np.float32)
+        semantic = scipy.misc.imread(semantic_name[i]).astype(np.float32)
         heatamp = scipy.misc.imread(heatmap_name[i]).astype(np.float32)
+        heatamp = scipy.misc.imresize(heatamp, 2., interp='bilinear', mode=None)
         pedestrian = scipy.misc.imread(pedestrian_name[500]).astype(np.float32)
         mask = scipy.misc.imread(mask_name[500]).astype(np.float32) / 255
         mask = np.dstack((mask, mask, mask))
         pedestrian *= mask
         ped_height, ped_width = 114, 59
 
-        #scipy.misc.imshow(pedestrian)
-        heatmap_index = np.nonzero(heatamp > 10)
 
-        sig, threshold = 7, 10
+        sig, threshold = 3, 10
         print(sig, threshold)
         blurred = gaussian_filter(heatamp, sigma=sig)
         blurred[np.nonzero(blurred >= threshold)] = 255
@@ -732,7 +755,7 @@ def synthesis_visual():
 
         all_labels = skimage.measure.label(blurred, background=0)
         for label in range(1, all_labels.max()+1):
-            label_map = np.zeros((256*3, 512*3), dtype=np.float32)
+            label_map = np.zeros((256, 512), dtype=np.float32)
             human_pixel = np.nonzero(all_labels == label)
             miny, maxy, minx, maxx = min(human_pixel[0]), max(human_pixel[0]), min(human_pixel[1]), max(human_pixel[1])
             heigh, width = maxy - miny, maxx - minx
@@ -754,18 +777,19 @@ def synthesis_visual():
                 upy = 0
 
             rx = lx + ped_width - cut_lx
-            if rx > 512*3 -1:
-                cut_rx = rx - (512*3 -1)
-                rx = 512*3-1
+            if rx > 512-1:
+                cut_rx = rx - (512-1)
+                rx = 512-1
 
             dny = upy + ped_height - cut_upy
-            if dny > 256*3-1:
-                cut_dny = dny - (256*3-1)
-                dny = 256*3-1
+            if dny > 256-1:
+                cut_dny = dny - (256-1)
+                dny = 256-1
 
             hole = (1-mask)[cut_upy:ped_height-cut_dny, cut_lx:ped_width-cut_rx, :] * image[upy:dny, lx:rx, :]
             fill = hole + pedestrian[cut_upy:ped_height-cut_dny, cut_lx:ped_width-cut_rx, :]
-            image[upy:dny, lx:rx, :] = fill
+            image_synthesis = np.copy(image)
+            image_synthesis[upy:dny, lx:rx, :] = fill
             #scipy.misc.imshow(label_map)
             #for ped_name in  pedestrian_name:
             #    ped_name = ped_name.split('/')[-1]
@@ -774,14 +798,15 @@ def synthesis_visual():
 
 
 
-        scipy.misc.imsave('ICCV/synthesis_visual/{}.png'.format(name), image.astype(np.uint8))
-        scipy.misc.imsave('ICCV/synthesis_visual/{}_{}_{}.png'.format(name, sig, threshold), image_v.astype(np.uint8))
+        scipy.misc.imsave('ICCV/synthesis_visual/{}_image.png'.format(name), image.astype(np.uint8))
+        scipy.misc.imsave('ICCV/synthesis_visual/{}_semantic.png'.format(name), semantic_vidualize(semantic).astype(np.uint8))
+        scipy.misc.imsave('ICCV/synthesis_visual/{}_heatmap.png'.format(name), image_v.astype(np.uint8))
+        scipy.misc.imsave('ICCV/synthesis_visual/{}_synthesis.png'.format(name), image_synthesis.astype(np.uint8))
         #scipy.misc.imsave('ICCV/synthesis_visual/{}_seg.png'.format(name), blurred.astype(np.uint8))
         #scipy.misc.imsave('ICCV/synthesis_visual/{}_ped.png'.format(name), pedestrian.astype(np.uint8))
 
         break
 
-#synthesis_visual()
 
 def valid_visual():
     dir = '/data/vllab1/Github/streetview_synthesize/Image synthesis/valid'
@@ -828,6 +853,7 @@ def valid_visual():
         scipy.misc.imsave('ICCV/heatmap_visual/valid/{}_gt.png'.format(name), image_gt.astype(np.uint8))
         scipy.misc.imsave('ICCV/heatmap_visual/valid/{}_heatmap.png'.format(name), image_heatmap.astype(np.uint8))
 
+
 def test_visual():
     dir = '/data/vllab1/Github/streetview_synthesize/Image synthesis/test_low'
     image_name = sorted(glob(os.path.join(dir, "*_image.png")))
@@ -855,16 +881,14 @@ def test_visual():
 
         blurred_index = np.nonzero(heatamp> 1)
         image_heatmap = np.copy(image)
-        heatamp = gaussian_filter(heatamp, sigma=1)
+        #heatamp = gaussian_filter(heatamp, sigma=1)
         image_heatmap += heatamp
         image_heatmap[np.nonzero(image_heatmap>255)] = 255
-
 
 
         scipy.misc.imsave('ICCV/heatmap_visual/test_low/{}.png'.format(name), image.astype(np.uint8))
         scipy.misc.imsave('ICCV/heatmap_visual/test_low/{}_heatmap.png'.format(name), image_heatmap.astype(np.uint8))
 
-test_visual()
 
 def heatmap_test_visual():
     dir = '/data/vllab1/Github/streetview_synthesize/Image synthesis/test'
@@ -873,7 +897,7 @@ def heatmap_test_visual():
     heatmap_name = sorted(glob(os.path.join(dir, "*_heatmap.png")))
     data_len = len(heatmap_name)
 
-    sig, threshold = 2, 10
+    sig, threshold = 3, 15
     print(sig, threshold)
 
     for i in range(0, data_len):
@@ -896,7 +920,7 @@ def heatmap_test_visual():
         # blurred[np.nonzero(blurred >= threshold)] = 255
         # blurred[np.nonzero(blurred < threshold)] = 0
 
-        blurred_index = np.nonzero(blurred > 1)
+        blurred_index = np.nonzero(blurred > threshold)
         image_heatmap = np.copy(image)
         image_heatmap[blurred_index] += 120
         image_heatmap[np.nonzero(image_heatmap > 255)] = 255
@@ -904,9 +928,7 @@ def heatmap_test_visual():
         scipy.misc.imsave('ICCV/heatmap_test_visual/test_low/{}.png'.format(name), image.astype(np.uint8))
         scipy.misc.imsave('ICCV/heatmap_test_visual/test_low/{}_heatmap.png'.format(name),
                           image_heatmap.astype(np.uint8))
-
-        break
-
+        
 
 def valid():
     data_set_dir = '/data/vllab1/dataset/CITYSCAPES/CITY/relative_high_image'
@@ -947,6 +969,12 @@ def read():
         scipy.misc.imsave(os.path.join('/data/vllab1/dataset/CITYSCAPES/CITY/train/relative_context_heatmap', name), heatmap)
         i +=1
 
+class PedestrianImage:
+    def __init__(self, name, width, height):
+        self.name = name
+        self.width = width
+        self.height = height
+        self.aspect = float(width) / float(height)
 
 def pedestrian_from_city():
     out = '../../dataset/pedestrian/CITYSCAPES'
@@ -954,21 +982,60 @@ def pedestrian_from_city():
     file_obj = open(os.path.join(dataset_dir, 'human_w.pkl'), 'r')
     human_file_name = pickle.load(file_obj)
     length = len(human_file_name)
-
+    pedestrian_list = []
+    total = 0
     for index in range(0, length):
         name = human_file_name[index]
         print ('%d/%d : %s' % (index, length, name))
         image_name = '{}_leftImg8bit.png'.format(name)
+        semantic_name = '{}_gtFine_labelIds.png'.format(name)
         mask_name = '{}_gtFine_labelIds.png'.format(name)
         instance_name = '{}_gtFine_polygons.json'.format(name)
         city_name = instance_name.split('_', 1)[0]
 
-        # astype(np.float32) somehow do the normalize
-        # should use if the inpainting method is context
+
         image = scipy.misc.imread(os.path.join(dataset_dir, 'fine_image', image_name)).astype(np.float32)
+        semantic = scipy.misc.imread(os.path.join(dataset_dir, 'fine_label', semantic_name)).astype(np.float32)
         mask_ori = scipy.misc.imread(os.path.join(dataset_dir, 'fine_mask', mask_name)).astype(np.float32)
         instance = (os.path.join('../../dataset/CITYSCAPES/gtFine_trainvaltest/gtFine/train',
                                  city_name, instance_name))
+
+
+        semantic[np.nonzero(semantic != 24)] = 0
+        semantic[np.nonzero(semantic != 0)] = 1
+        all_labels = skimage.measure.label(semantic, background=0)
+        for label in range(1, all_labels.max()+1):
+            label_map = np.zeros((256, 512), dtype=np.float32)
+            human_pixel = np.nonzero(all_labels == label)
+            miny, maxy, minx, maxx = min(human_pixel[0]), max(human_pixel[0]), min(human_pixel[1]), max(human_pixel[1])
+            height, width = maxy - miny, maxx - minx
+            if  height < 15 or width < 15:
+                continue
+            aspect = float(width) / float(height)
+            if aspect < 0.7 :
+                continue
+            #    continue
+            if minx < 0:
+                minx = 0
+            if miny < 0:
+                miny = 0
+            if maxx > 511:
+                maxx = 511
+            if maxy > 255:
+                maxy = 255
+            label_map[human_pixel] = 1
+            instance_name = '{:d}_{}.png'.format(label, name)
+            scipy.misc.imsave('../../dataset/pedestrian/CITYSCAPES_multiple/mask/{}'.format(instance_name), label_map[miny:maxy, minx:maxx].astype(np.uint8))
+            scipy.misc.imsave('../../dataset/pedestrian/CITYSCAPES_multiple/image/{}'.format(instance_name), image[miny:maxy, minx:maxx].astype(np.uint8))
+
+            crop_mask = np.dstack((label_map[miny:maxy, minx:maxx], label_map[miny:maxy, minx:maxx], label_map[miny:maxy, minx:maxx]))
+            crop_image = image[miny:maxy, minx:maxx] * crop_mask
+            scipy.misc.imsave('../../dataset/pedestrian/CITYSCAPES_multiple/crop/{}'.format(instance_name), crop_image.astype(np.uint8))
+
+            pedestrian_image = PedestrianImage(instance_name, width=width, height=height)
+            pedestrian_list.append(pedestrian_image)
+
+        '''
 
         with open(instance) as data_file:
             label_instance = json.load(data_file)
@@ -982,43 +1049,29 @@ def pedestrian_from_city():
                 polygon = [tuple(poly) for poly in obj['polygon']]
                 poly = np.copy(polygon)
                 minx, miny, maxx, maxy = min(poly[:, 0]), min(poly[:, 1]), max(poly[:, 0]), max(poly[:, 1])
+                minx, miny, maxx, maxy = minx/4, miny/4, maxx/4, maxy/4.0
+                if minx < 0:
+                    minx = 0
+                if miny < 0:
+                    miny = 0
+                if maxx > 511:
+                    maxx = 511
+                if maxy > 255:
+                    maxy = 255
                 height, width = maxy - miny, maxx - minx
-                if width < 60 or height < 240:
-                    continue
 
                 img = Image.new('F', (2048, 1024), 0)
                 ImageDraw.Draw(img).polygon(polygon, outline=1, fill=1)
                 img = scipy.misc.imresize(img, 0.25, interp='bilinear', mode=None)
                 mask = np.array(img)
                 mask[np.nonzero(mask > 0)] = 255
-
-                minx, miny, maxx, maxy = minx/4, miny/4, maxx/4, maxy/4
-                minx -= 10
-                if minx < 0:
-                    minx = 0
-                miny -= 10
-                if miny < 0:
-                    miny = 0
-                maxx += 10
-                if maxx > 511:
-                    maxx = 511
-                maxy += 10
-                if maxy > 255:
-                    maxy = 255
-
                 pedestrian_image = image[miny:maxy, minx:maxx]
-                #human_pixel = np.nonzero(mask == 255)
-                # human_ratio = float(len(human_pixel[0])) / float((img.shape[0] * img.shape[1]))
-                # if human_ratio > alpha:
-                #     mask_instance_sel.append(instance_num)
-                instance_num += 1
-                print(width, height, instance_num)
-                scipy.misc.imsave('../../dataset/pedestrian/CITYSCAPES/image/{:d}_{:d}_{}.png'.format(
-                    height, width/4, name), pedestrian_image.astype(np.uint8))
 
-
-                scipy.misc.imsave('../../dataset/pedestrian/CITYSCAPES/mask/{:d}_{:d}_{}.png'.format(
-                    height, width/4, name), mask[miny:maxy, minx:maxx].astype(np.uint8))
+                stroe_name = '{}_{:d}.png'.format(name, instance_num)
+                scipy.misc.imsave('../../dataset/pedestrian/CITYSCAPES_single/image/{}'.format(
+                    stroe_name), pedestrian_image.astype(np.uint8))
+                scipy.misc.imsave('../../dataset/pedestrian/CITYSCAPES_single/mask/{}'.format(
+                    stroe_name), mask[miny:maxy, minx:maxx].astype(np.uint8))
 
                 #mask = scipy.ndimage.morphology.binary_dilation(mask).astype(mask.dtype)
 
@@ -1028,9 +1081,450 @@ def pedestrian_from_city():
                 image_mask[mask_index + (1,)] = 0
                 image_mask[mask_index + (2,)] = 0
                 pedestrian_image = image_mask[miny:maxy, minx:maxx]
-                scipy.misc.imsave('../../dataset/pedestrian/CITYSCAPES/crop/{:d}_{:d}_{}.png'.format(
-                    height, width/4, name), pedestrian_image.astype(np.uint8))
+                scipy.misc.imsave('../../dataset/pedestrian/CITYSCAPES_single/crop/{}'.format(
+                    stroe_name), pedestrian_image.astype(np.uint8))
+                pedestrian_image = PedestrianImage(stroe_name, width=width, height=height)
+                pedestrian_list.append(pedestrian_image)
 
+                instance_num += 1
+                total +=1
+        '''
+        #break
+
+    print(total)
+    file_obj = open('/data/vllab1/dataset/pedestrian/CITYSCAPES_multiple/pedestrian_list.pkl', 'wb')
+    pickle.dump(pedestrian_list, file_obj)
+    file_obj.close()
+
+#pedestrian_from_city()
+def synthesis_visual_fit():
+    # Image, heatmap, semantic
+    dir = '/data/vllab1/Github/streetview_synthesize/Image synthesis/test'
+    image_name = sorted(glob(os.path.join(dir, "*_image.png")))
+    dir = '/data/vllab1/Github/streetview_synthesize/Image synthesis/test_low'
+    heatmap_name = sorted(glob(os.path.join(dir, "*_heatmap.png")))
+    dir = '/data/vllab1/dataset/CITYSCAPES/gtFine_trainvaltest/gtFine/val'
+    semantic_name = []
+    for folder in os.listdir(dir):
+        path = os.path.join(dir, folder, "*_labelIds.png")
+        semantic_name.extend(glob(path))
+    semantic_name = sorted(semantic_name)
+    data_len = len(heatmap_name)
+
+    # pedestrian image, mask, list
+    ped_single_dir = '/data/vllab1/dataset/pedestrian/CITYSCAPES_single/image'
+    mask_single_dir = '/data/vllab1/dataset/pedestrian/CITYSCAPES_single/mask'
+    dataset_dir = '/data/vllab1/dataset/pedestrian/CITYSCAPES_single'
+    file_name = os.path.join(dataset_dir, 'pedestrian_list.pkl')
+    file_obj = open(file_name, 'r')
+    pedestrian_list = pickle.load(file_obj)
+    # pedestrian_multi image, mask, list
+    ped_mul_dir = '/data/vllab1/dataset/pedestrian/CITYSCAPES_multiple/image'
+    mask_mul_dir = '/data/vllab1/dataset/pedestrian/CITYSCAPES_multiple/mask'
+    dataset_dir = '/data/vllab1/dataset/pedestrian/CITYSCAPES_multiple'
+    file_name = os.path.join(dataset_dir, 'pedestrian_list.pkl')
+    file_obj = open(file_name, 'r')
+    pedestrian_multi_list = pickle.load(file_obj)
+
+    # parameter
+    sig, threshold = 1, 5
+    print(sig, threshold)
+    out_dir = '/data/vllab1/Github/streetview_synthesize/ICCV/emp/{}_{}'.format(sig, threshold)
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+
+    for i in range(0, data_len):
+        print('{:d}/{:d}'.format(i, data_len))
+        # Name split
+        name = image_name[i].split('/')[-1]
+        name = name.split('.')[0]
+        city = name.split('_')[0]
+        # get image, semantic, heatmap_low
+        image = scipy.misc.imread(image_name[i]).astype(np.float32)
+        semantic = scipy.misc.imread(semantic_name[i]).astype(np.float32)
+        heatamp = scipy.misc.imread(heatmap_name[i]).astype(np.float32)
+        heatamp = scipy.misc.imresize(heatamp, 2., interp='bilinear', mode=None)
+        # Segment heatmap
+        blurred = gaussian_filter(heatamp, sigma=sig)
+        blurred[np.nonzero(blurred >= threshold)] = 255
+        blurred[np.nonzero(blurred < threshold)] = 0
+        # Visual segment heatmap
+        blurred_index = np.nonzero(blurred == 255)
+        image_v = np.copy(image)
+        image_v[blurred_index + (0,)] += 80
+        image_v[blurred_index + (1,)] += 80
+        image_v[blurred_index + (2,)] += 80
+        image_v[np.nonzero(image_v > 255)] = 255
+
+        # Use segment heatmap seythesis image
+        image_synthesis = np.copy(image)
+        all_labels = skimage.measure.label(blurred, background=0)
+        for label in range(1, all_labels.max()+1):
+            human_pixel = np.nonzero(all_labels == label)
+            miny, maxy, minx, maxx = min(human_pixel[0]), max(human_pixel[0]), min(human_pixel[1]), max(human_pixel[1])
+            height, width = maxy - miny, maxx - minx
+            # invalid region
+            if height < 0 or width < 5:
+                continue
+            semantic_check_region = semantic[maxy*4-5:maxy*4+5, minx*4:maxx*4]
+            road_pixel = len(np.nonzero(semantic_check_region == 7)[0])
+            sidewalk_pixel = len(np.nonzero(semantic_check_region == 8)[0])
+            parking_pixel = len(np.nonzero(semantic_check_region == 9)[0])
+            rail_pixel = len(np.nonzero(semantic_check_region == 10)[0])
+            if road_pixel + sidewalk_pixel + parking_pixel + rail_pixel < 10:
+                image_v[human_pixel + (0,)] = 255
+                continue
+            aspect = float(width) / float(height)
+            if aspect > 0.7:
+                image_v[human_pixel + (1,)] = 255
+                pedestrian_fit_all = pedestrian_multi_list
+                ped_dir = ped_mul_dir
+                mask_dir = mask_mul_dir
+                heat_alpha = 1
+            else:
+                image_v[human_pixel + (2,)] = 255
+                pedestrian_fit_all = pedestrian_list
+                ped_dir = ped_single_dir
+                mask_dir = mask_single_dir
+                heat_alpha = 255
+
+            ceny, cenx = np.round(np.mean(human_pixel[0])), np.round(np.mean(human_pixel[1]))
+            pedestrian_fit_all.sort(key=lambda x: abs(x.width-width) + abs(x.height-height))
+
+            sel_ped_name, ped_width, ped_height = pedestrian_fit_all[0].name, pedestrian_fit_all[0].width, pedestrian_fit_all[0].height
+            sel_ped_image = scipy.misc.imread(os.path.join(ped_dir, sel_ped_name)).astype(np.float32)
+            sel_ped_mask = scipy.misc.imread(os.path.join(mask_dir, sel_ped_name)).astype(np.float32)/heat_alpha
+            sel_ped_mask = np.dstack((sel_ped_mask, sel_ped_mask, sel_ped_mask))
+            sel_ped_image *= sel_ped_mask
+
+            ped_width, ped_height =  int(ped_width), int(ped_height)
+            cut_upy, cut_dny, cut_lx, cut_rx = 0, 0, 0, 0
+            lx = int(np.round(cenx - ped_width / 2))
+            if lx < 0:
+                cut_lx = -lx
+                lx = 0
+
+            upy = int(np.round(ceny - ped_height/2))
+            if upy < 0:
+                cut_upy = -upy
+                upy = 0
+
+            rx = lx + ped_width - cut_lx
+            if rx > 512-1:
+                cut_rx = rx - (512-1)
+                rx = 512-1
+
+            dny = upy + ped_height - cut_upy
+            if dny > 256-1:
+                cut_dny = dny - (256-1)
+                dny = 256-1
+
+            hole = (1-sel_ped_mask)[cut_upy:ped_height-cut_dny, cut_lx:ped_width-cut_rx, :] * image[upy:dny, lx:rx, :]
+            fill = hole + sel_ped_image[cut_upy:ped_height-cut_dny, cut_lx:ped_width-cut_rx, :]
+            image_synthesis[upy:dny, lx:rx, :] = fill
+
+            #image_synthesis[miny:maxy, minx:maxx, :] *= 1 - sel_ped_mask
+            #image_synthesis[miny:maxy, minx:maxx, :] += sel_ped_image * sel_ped_mask
+            #scipy.misc.imshow(label_map)
+            #for ped_name in  pedestrian_name:
+            #    ped_name = ped_name.split('/')[-1]
+            #    ped_name_split = ped_name.split('_')
+            #    height, width = int(ped_name_split[0]), int(ped_name_split[1])
+
+
+
+        #scipy.misc.imsave('ICCV/synthesis_visual/{}_image.png'.format(name), image.astype(np.uint8))
+        #scipy.misc.imsave('ICCV/synthesis_visual/{}_semantic.png'.format(name), semantic_vidualize(semantic).astype(np.uint8))
+        scipy.misc.imsave({}_heatmap.png'.format(name), image_v.astype(np.uint8))
+        scipy.misc.imsave('ICCV/wrong_random/{}_synthesis.png'.format(name), image_synthesis.astype(np.uint8))
+        #scipy.misc.imsave('ICCV/synthesis_visual/{}_seg.png'.format(name), blurred.astype(np.uint8))
+        #scipy.misc.imsave('ICCV/synthesis_visual/{}_ped.png'.format(name), pedestrian.astype(np.uint8))
+        #break
+
+synthesis_visual_fit()
+
+def pedestrian_from_Ped():
+    dir = '/data/vllab1/dataset/pedestrian/completeData/image'
+    image_name = sorted(glob(os.path.join(dir, "*.png")))
+    dir = '/data/vllab1/dataset/pedestrian/completeData/mask'
+    mask_name = sorted(glob(os.path.join(dir, "*.png")))
+    data_len = len(mask_name)
+
+    pedestrian_list = []
+    for i in range(0, data_len):
+        print('{:d}/{:d}'.format(i, data_len))
+        image = scipy.misc.imread(image_name[i]).astype(np.float32)
+        mask = scipy.misc.imread(mask_name[i]).astype(np.float32)
+        name = image_name[i].split('/')[-1]
+        human_pixel = np.nonzero(mask == 255)
+        miny, maxy, minx, maxx = min(human_pixel[0]), max(human_pixel[0]), min(human_pixel[1]), max(human_pixel[1])
+        height, width = maxy - miny, maxx - minx
+        pedestrian_image = PedestrianImage(name, width=width, height=height)
+        pedestrian_list.append(pedestrian_image)
+
+        scipy.misc.imsave('/data/vllab1/dataset/pedestrian/Ped/image/{}'.format(name), image[miny:maxy, minx:maxx, :])
+        scipy.misc.imsave('/data/vllab1/dataset/pedestrian/Ped/mask/{}'.format(name), mask[miny:maxy, minx:maxx])
+
+
+    file_obj = open('pedestrian_list.pkl', 'wb')
+    pickle.dump(pedestrian_list, file_obj)
+    file_obj.close()
+
+
+#pedestrian_from_Ped()
+
+def wrong_similiar():
+    dataset_dir = '/data/vllab1/dataset/CITYSCAPES/leftImg8bit_trainvaltest/leftImg8bit/val'
+    data = []
+    for folder in os.listdir(dataset_dir):
+        path = os.path.join(dataset_dir, folder, "*.png")
+        data.extend(glob(path))
+    image_name = sorted(data)
+    data_len = len(image_name)
+
+    dataset_dir = '../../dataset/CITYSCAPES/CITY'
+    file_obj = open(os.path.join(dataset_dir, 'human_w.pkl'), 'r')
+    human_file_name = pickle.load(file_obj)
+    np.random.shuffle(human_file_name)
+    for i in range(0, data_len):
+        print('{:d}/{:d}'.format(i, data_len))
+        name = image_name[i].split('/')[-1]
+        human_name = human_file_name[i%192]
+        city = human_name.split('_')[0]
+        image = scipy.misc.imread(image_name[i]).astype(np.float32)
+
+        human_image_name = '{}_leftImg8bit.png'.format(human_name)
+        human_mask_name = '{}_gtFine_labelIds.png'.format(human_name)
+        human_image = scipy.misc.imread(os.path.join('/data/vllab1/dataset/CITYSCAPES/leftImg8bit_trainvaltest/leftImg8bit/train',
+                                                     city, human_image_name)).astype(np.float32)
+        human_mask = scipy.misc.imread(os.path.join('/data/vllab1/dataset/CITYSCAPES/gtFine_trainvaltest/gtFine/train',
+                                                    city, human_mask_name)).astype(np.float32)
+
+        human_mask[np.nonzero(human_mask != 24)] = 0
+        human_mask[np.nonzero(human_mask != 0)] = 1
+
+        human_mask = np.dstack((human_mask, human_mask, human_mask))
+        image = image * (1-human_mask) + human_image * human_mask
+        image = scipy.misc.imresize(image, 0.25, interp='bilinear', mode=None)
+
+        #img_ret = poissonblending.blend(image, human_image, human_mask, offset=(0, 0))
+
+
+        scipy.misc.imsave('/data/vllab1/Github/streetview_synthesize/ICCV/wrong_similiar/{}'.format(name), image)
+        #break
+
+
+def pedestrian_from_city_big():
+    dataset_dir = '../../dataset/CITYSCAPES/CITY'
+    file_obj = open(os.path.join(dataset_dir, 'human_w.pkl'), 'r')
+    human_file_name = pickle.load(file_obj)
+    np.random.shuffle(human_file_name)
+    data_len = len(human_file_name)
+    pedestrian_list = []
+    for i in range(0, data_len):
+        print('{:d}/{:d}'.format(i, data_len))
+        human_name = human_file_name[i]
+        city = human_name.split('_')[0]
+
+        human_image_name = '{}_leftImg8bit.png'.format(human_name)
+        human_mask_name = '{}_gtFine_labelIds.png'.format(human_name)
+        human_image = scipy.misc.imread(os.path.join('/data/vllab1/dataset/CITYSCAPES/leftImg8bit_trainvaltest/leftImg8bit/train',
+                                                     city, human_image_name)).astype(np.float32)
+        human_mask = scipy.misc.imread(os.path.join('/data/vllab1/dataset/CITYSCAPES/gtFine_trainvaltest/gtFine/train',
+                                                    city, human_mask_name)).astype(np.float32)
+
+        human_mask[np.nonzero(human_mask != 24)] = 0
+        human_mask[np.nonzero(human_mask != 0)] = 1
+
+        all_labels = skimage.measure.label(human_mask, background=0)
+        human_mask = np.dstack((human_mask, human_mask, human_mask))
+        image = human_image * (1 - human_mask) + human_image * human_mask
+        for label in range(1, all_labels.max() + 1):
+            human_pixel = np.nonzero(all_labels == label)
+            miny, maxy, minx, maxx = min(human_pixel[0]), max(human_pixel[0]), min(human_pixel[1]), max(human_pixel[1])
+            height, width = maxy - miny, maxx - minx
+            if height < 100 or width < 100:
+                continue
+            aspect = float(width) / float(height)
+            if aspect < 0.5:
+                continue
+            sel_image = image[miny:maxy, minx:maxx, :]
+            sel_mask = human_mask[miny:maxy, minx:maxx, 0]
+            pedestrian_image = PedestrianImage(human_image_name, width=width, height=height)
+            pedestrian_list.append(pedestrian_image)
+
+            scipy.misc.imsave('/data/vllab1/dataset/pedestrian/CITYSCAPES_big/image/{}_{}'.format(label, human_image_name), sel_image)
+            scipy.misc.imsave('/data/vllab1/dataset/pedestrian/CITYSCAPES_big/mask/{}_{}'.format(label, human_image_name), sel_mask)
+
+
+    file_obj = open('city_big_list.pkl', 'wb')
+    pickle.dump(pedestrian_list, file_obj)
+    file_obj.close()
+
+
+def wrong_random():
+    # Image, heatmap, semantic
+    dir = '/data/vllab1/Github/streetview_synthesize/Image synthesis/test'
+    image_name = sorted(glob(os.path.join(dir, "*_image.png")))
+    dir = '/data/vllab1/Github/streetview_synthesize/Image synthesis/test_low'
+    heatmap_name = sorted(glob(os.path.join(dir, "*_heatmap.png")))
+    dir = '/data/vllab1/dataset/CITYSCAPES/gtFine_trainvaltest/gtFine/val'
+    semantic_name = []
+    for folder in os.listdir(dir):
+        path = os.path.join(dir, folder, "*_labelIds.png")
+        semantic_name.extend(glob(path))
+    semantic_name = sorted(semantic_name)
+    data_len = len(heatmap_name)
+
+    # pedestrian image, mask, list
+    ped_dir = '/data/vllab1/dataset/pedestrian/CITYSCAPES_single/image'
+    mask_dir = '/data/vllab1/dataset/pedestrian/CITYSCAPES_single/mask'
+    dataset_dir = '/data/vllab1/dataset/pedestrian/CITYSCAPES_single'
+    file_name = os.path.join(dataset_dir, 'pedestrian_list_single.pkl')
+    file_obj = open(file_name, 'r')
+    pedestrian_list = pickle.load(file_obj)
+
+    # parameter
+    sig, threshold = 2, 5
+    print(sig, threshold)
+
+    for i in range(0, data_len):
+        print('{:d}/{:d}'.format(i, data_len))
+        # Name split
+        name = image_name[i].split('/')[-1]
+        name = name.split('.')[0]
+        city = name.split('_')[0]
+        # get image, semantic, heatmap_low
+        image = scipy.misc.imread(image_name[i]).astype(np.float32)
+        semantic = scipy.misc.imread(semantic_name[i]).astype(np.float32)
+        heatamp = scipy.misc.imread(heatmap_name[i]).astype(np.float32)
+        heatamp = scipy.misc.imresize(heatamp, 2., interp='bilinear', mode=None)
+        # Segment heatmap
+        blurred = gaussian_filter(heatamp, sigma=sig)
+        blurred[np.nonzero(blurred >= threshold)] = 255
+        blurred[np.nonzero(blurred < threshold)] = 0
+        # Visual segment heatmap
+        blurred_index = np.nonzero(blurred == 255)
+        image_v = np.copy(image)
+        image_v[blurred_index + (0,)] += 80
+        image_v[blurred_index + (1,)] += 80
+        image_v[blurred_index + (2,)] += 80
+        image_v[np.nonzero(image_v > 255)] = 255
+
+        # Use segment heatmap seythesis image
+        image_synthesis = np.copy(image)
+        all_labels = skimage.measure.label(blurred, background=0)
+        for label in range(1, all_labels.max() + 1):
+            human_pixel = np.nonzero(all_labels == label)
+            miny, maxy, minx, maxx = min(human_pixel[0]), max(human_pixel[0]), min(human_pixel[1]), max(human_pixel[1])
+            height, width = maxy - miny, maxx - minx
+            # valid region check
+            if height < 5 or width < 9:
+                continue
+            semantic_chekch_region = semantic[(maxy-3)*4:(maxy+3)*4, minx*4:maxx*4]
+            road_pixel = len(np.nonzero(semantic_chekch_region == 7)[0])
+            sidewalk_pixel = len(np.nonzero(semantic_chekch_region == 8)[0])
+            parking_pixel = len(np.nonzero(semantic_chekch_region == 9)[0])
+            rail_track_pixel = len(np.nonzero(semantic_chekch_region == 10)[0])
+            if road_pixel + sidewalk_pixel + parking_pixel + rail_track_pixel < 5:
+                image_v[human_pixel + (0,)] = 255
+                continue
+            # valid aspect check
+            aspect = float(width) / float(height)
+            # TODO
+            if aspect > 0.7:
+                image_v[human_pixel + (1,)] = 255
+                continue
+            else:
+                image_v[human_pixel + (2,)] = 255
+
+            pedestrian_list.sort(key=lambda x: abs(x.aspect - aspect))
+            pedestrian_list_top10 = pedestrian_list
+            pedestrian_list_top10.sort(key=lambda x: abs(x.width - width) + abs(x.height - height))
+            #sel_index = np.random.randint(0, pedestrian_list_len)
+            sel_index = 0
+            #cenx, ceny = np.random.randint(0, 512), np.random.randint(0, 256)
+            ceny, cenx = np.round(np.mean(human_pixel[0])), np.round(np.mean(human_pixel[1]))
+
+            sel_ped_name, ped_width, ped_height = \
+                pedestrian_list_top10[sel_index].name, pedestrian_list_top10[sel_index].width, pedestrian_list_top10[sel_index].height
+            sel_ped_image = scipy.misc.imread(os.path.join(ped_dir, sel_ped_name)).astype(np.float32)
+            sel_ped_mask = scipy.misc.imread(os.path.join(mask_dir, sel_ped_name)).astype(np.float32)/255
+
+            if False:
+
+                #sel_ped_mask = np.dstack((sel_ped_mask, sel_ped_mask, sel_ped_mask))
+                #sel_ped_image *= sel_ped_mask
+                ped_width, ped_height = int(ped_width) + 20, int(ped_height) + 20
+
+                cut_upy, cut_dny, cut_lx, cut_rx = 0, 0, 0, 0
+                lx = int(np.round(cenx - ped_width / 2))
+                if lx < 0:
+                    cut_lx = -lx
+                    lx = 0
+
+                upy = int(np.round(ceny - ped_height/2))
+                if upy < 0:
+                    cut_upy = -upy
+                    upy = 0
+
+                rx = lx + ped_width - cut_lx
+                if rx > 512-1:
+                    cut_rx = rx - (512-1)
+                    rx = 512-1
+
+                dny = upy + ped_height - cut_upy
+                if dny > 256-1:
+                    cut_dny = dny - (256-1)
+                    dny = 256-1
+                #hole = (1-sel_ped_mask)[cut_upy:ped_height-cut_dny, cut_lx:ped_width-cut_rx, :] * image_synthesis[upy:dny, lx:rx, :]
+                #fill = hole + sel_ped_image[cut_upy:ped_height-cut_dny, cut_lx:ped_width-cut_rx, :]
+                #image_synthesis[upy:dny, lx:rx, :] = fill
+
+                for_poisson_image = np.ones((ped_height, ped_width, 3)) * 255
+                for_poisson_image[10:-10, 10:-10, :] = sel_ped_image
+                for_poisson_mask = np.zeros((ped_height, ped_width))
+                for_poisson_mask[10:-10, 10:-10] = sel_ped_mask
+                for_poisson_mask = scipy.ndimage.morphology.binary_dilation(for_poisson_mask, iterations=1).astype(for_poisson_mask.dtype)
+                image_synthesis = poissonblending.blend(image_synthesis, for_poisson_image, for_poisson_mask, offset=(upy-10, lx-10))
+            else:
+                sel_ped_mask = np.dstack((sel_ped_mask, sel_ped_mask, sel_ped_mask))
+                sel_ped_image *= sel_ped_mask
+                ped_width, ped_height = int(ped_width), int(ped_height)
+
+                cut_upy, cut_dny, cut_lx, cut_rx = 0, 0, 0, 0
+                lx = int(np.round(cenx - ped_width / 2))
+                if lx < 0:
+                    cut_lx = -lx
+                    lx = 0
+
+                upy = int(np.round(ceny - ped_height / 2))
+                if upy < 0:
+                    cut_upy = -upy
+                    upy = 0
+
+                rx = lx + ped_width - cut_lx
+                if rx > 512 - 1:
+                    cut_rx = rx - (512 - 1)
+                    rx = 512 - 1
+
+                dny = upy + ped_height - cut_upy
+                if dny > 256 - 1:
+                    cut_dny = dny - (256 - 1)
+                    dny = 256 - 1
+                hole = (1-sel_ped_mask)[cut_upy:ped_height-cut_dny, cut_lx:ped_width-cut_rx, :] * image_synthesis[upy:dny, lx:rx, :]
+                fill = hole + sel_ped_image[cut_upy:ped_height-cut_dny, cut_lx:ped_width-cut_rx, :]
+                image_synthesis[upy:dny, lx:rx, :] = fill
+
+        # scipy.misc.imsave('ICCV/synthesis_visual/{}_image.png'.format(name), image.astype(np.uint8))
+        # scipy.misc.imsave('ICCV/synthesis_visual/{}_semantic.png'.format(name), semantic_vidualize(semantic).astype(np.uint8))
+        scipy.misc.imsave('ICCV/wrong_random/{}_heatmap.png'.format(name), image_v.astype(np.uint8))
+        scipy.misc.imsave('ICCV/wrong_random/{}_synthesis.png'.format(name), image_synthesis.astype(np.uint8))
+        #scipy.misc.imsave('ICCV/wrong_random/{}_semantic.png'.format(name), semantic_vidualize(semantic).astype(np.uint8))
+        #break
+
+
+#wrong_random()
 
 def creat_mask_image_for_high():
     dataset_dir = '../../dataset/CITYSCAPES/CITY'
@@ -1246,4 +1740,15 @@ def low_resolution():
             '/data/vllab1/dataset/Relative/valid/relative_combine_low_image', name), img)
 
 
+def valid_sigmoid():
+    dir = '/data/vllab1/combine'
+    image_name = sorted(glob(os.path.join(dir, "*.png")))
+    deta_len = len(image_name)
 
+    for i in range(0, deta_len):
+        name = image_name[i].split('/')[-1]
+        image = scipy.misc.imread(image_name[i])
+        image = scipy.misc.imresize(image, 2., interp='bilinear', mode=None)
+        image[np.nonzero(image < 10)] = 0
+        image[np.nonzero(image != 0)] = 255
+        scipy.misc.imsave(os.path.join('/data/vllab1/combine_treshold', name), image)

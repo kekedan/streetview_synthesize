@@ -8,6 +8,7 @@ import itertools
 from scipy.ndimage.filters import gaussian_filter
 import skimage.measure
 import poissonblending
+import h5py
 
 from utils import *
 import h5py
@@ -85,7 +86,7 @@ def store_single(filename, height , width, col_num, sel):
     name, extension = filename.split('.')
     col, row = sel % col_num, sel / col_num
     sel_image = img[row*height:(row+1)*height, col*width:(col+1)*width, :]
-    scipy.misc.imsave(name + '_single.' + extension, sel_image)
+    scipy.misc.imsave('yo_single.' + extension, sel_image)
 
 
 def crop_images(dataset_dir):
@@ -105,7 +106,7 @@ def crop_images(dataset_dir):
 
         img = scipy.misc.imread(filePath).astype(np.uint8)
         img = scipy.misc.imresize(img, 0.25, interp='bilinear', mode=None)
-        scipy.misc.imsave('/data/vllab1/dataset/CITYSCAPES/CITY/coarse_image/' + filePath.split('/')[-1], img)
+        scipy.misc.imsave('/data/vllab1/dataset/CITYSCAPES/CITY_test/fine_image/' + filePath.split('/')[-1], img)
 
 
 def crop_images_label(dataset_dir, is_mask=True):
@@ -162,7 +163,7 @@ def crop_images_label_big(dataset_dir, is_mask=True):
 
         img = scipy.misc.imresize(img, 0.25, interp='bilinear', mode=None)
         img[np.nonzero(img > 0)] = 255
-        scipy.misc.imsave('/data/vllab1/dataset/CITYSCAPES/CITY/coarse_mask/' + filePath.split('/')[-1], img)
+        scipy.misc.imsave('/data/vllab1/dataset/CITYSCAPES/CITY_valid/fine_mask/' + filePath.split('/')[-1], img)
 
 
 def crop_images_color(dataset_dir, is_mask=True):
@@ -270,18 +271,26 @@ def create_mask_img():
     data = sorted(glob(os.path.join('../../dataset/CITYSCAPES/CITY/human_image', "*.png")))
     label = sorted(glob(os.path.join('../../dataset/CITYSCAPES/CITY/human_mask', "*.png")))
 
-    length = len(data)
-    for i in range(0, length):
-        print ('%d/%d' % (i, length))
+    dataset_dir = '../../dataset/CITYSCAPES/CITY_valid'
+    file_name = os.path.join(dataset_dir, 'human_w.pkl')
+    file_obj = open(file_name, 'r')
+    human_file_name = pickle.load(file_obj)
+    length = len(human_file_name)
+    for index in range(0, length):
+        print ('%d/%d' % (index, len(human_file_name)))
+        name = human_file_name[index]
+        image_name = '{}_leftImg8bit.png'.format(name)
+        mask_name = '{}_gtFine_labelIds.png'.format(name)
+
         #fileName = filePath.split('/')[-1].split('.')[0]
-        img = scipy.misc.imread(data[i]).astype(np.float)
-        label2 = scipy.misc.imread(label[i]).astype(np.int)
+        img = scipy.misc.imread(os.path.join('../../dataset/CITYSCAPES/CITY_valid/human_image', image_name)).astype(np.uint8)
+        label2 = scipy.misc.imread(os.path.join('../../dataset/CITYSCAPES/CITY_valid/fine_mask', mask_name)).astype(np.uint8)
 
         indices = np.nonzero(label2 == 255)
         img[indices + (0,)] = 0
         img[indices + (1,)] = 255
         img[indices + (2,)] = 0
-        scipy.misc.imsave('../../dataset/CITYSCAPES/CITY/human_mask_inpainting/' + data[i].split('/')[-1], img)
+        scipy.misc.imsave(os.path.join('../../dataset/CITYSCAPES/CITY_valid/human_mask_inpainting', image_name), img.astype(np.uint8))
         #scipy.misc.imsave('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/image_mask/' + label2[i].split('/')[-1], img)
 
 
@@ -315,7 +324,7 @@ def create_instance():
         city_name = instance_name.split('_', 1)[0]
 
         # astype(np.float32) somehow do the normalize
-        # should use if the inpainting method is context
+        # should use(np.uint8) if the inpainting method is context
         image = scipy.misc.imread(os.path.join(dataset_dir, 'fine_image', image_name)).astype(np.float32)
         mask_ori = scipy.misc.imread(os.path.join(dataset_dir, 'fine_mask', mask_name)).astype(np.float32)
         inpainting = scipy.misc.imread(os.path.join(dataset_dir, 'inpainting_high', image_name)).astype(np.float32)
@@ -394,6 +403,206 @@ def create_instance():
                     image_name.split('.')[0], c_idx, i_idx), heatmap)
 
 
+def create_instance_new_standard():
+    alpha = 0.01
+    dataset_dir = '../../dataset/CITYSCAPES/CITY'
+    file_obj = open(os.path.join(dataset_dir, 'human_w.pkl'), 'r')
+    human_file_name = pickle.load(file_obj)
+    length = len(human_file_name)
+
+    instance_multi_view_pose = {}
+    for index in range(0, length):
+        name = human_file_name[index]
+        print ('%d/%d : %s' % (index, length, name))
+        image_name = '{}_leftImg8bit.png'.format(name)
+        mask_name = '{}_gtFine_labelIds.png'.format(name)
+        instance_name = '{}_gtFine_polygons.json'.format(name)
+        city_name = instance_name.split('_', 1)[0]
+
+        # astype(np.float32) somehow do the normalize
+        # should use if the inpainting method is context
+        image = scipy.misc.imread(os.path.join(
+            '/data/vllab1/dataset/CITYSCAPES/leftImg8bit_trainvaltest/leftImg8bit/train', city_name, image_name)).astype(np.float32)
+        mask_ori = scipy.misc.imread(os.path.join(
+            '/data/vllab1/dataset/CITYSCAPES/leftImg8bit_trainvaltest/leftImg8bit/train', city_name, image_name)).astype(np.float32)
+        instance = (os.path.join('../../dataset/CITYSCAPES/gtFine_trainvaltest/gtFine/train',
+                                 city_name, instance_name))
+
+        with open(instance) as data_file:
+            label_instance = json.load(data_file)
+            data_file.close()
+
+        objects = label_instance['objects']
+        instance_num = 0
+        mask_instance = []
+        human_pixel_set = []
+        instance_single_view_pose = []
+        for obj in objects:
+            if obj['label'] == 'person':
+                #print(object['polygon'])
+                polygon = [tuple(poly) for poly in obj['polygon']]
+                img = Image.new('F', (2048, 1024), 0)
+                ImageDraw.Draw(img).polygon(polygon, outline=1, fill=1)
+                #img = scipy.misc.imresize(img, 0.25, interp='bilinear', mode=None)
+                mask = np.array(img)
+                human_pixel = np.nonzero(mask > 0)
+                miny, maxy, minx, maxx = min(human_pixel[0]), max(human_pixel[0]), min(human_pixel[1]), max(
+                    human_pixel[1])
+                ori_heigh, ori_width = maxy - miny, maxx - minx
+
+                mask[human_pixel] = 1
+                mask_image = image * np.dstack((mask, mask, mask))
+                #mask_instance.append(mask)
+
+                scale =  float(256)/max(ori_heigh, ori_width)
+                resize_image = scipy.misc.imresize(mask_image[miny:maxy, minx:maxx, :], scale)
+                backgorund = np.zeros((256, 256, 3), dtype=np.float32)
+                heigh, width = np.shape(resize_image)[0], np.shape(resize_image)[1]
+                margin_V = (256 - heigh) / 2
+                margin_H = (256 - width) / 2
+                backgorund[margin_V:margin_V+heigh, margin_H:margin_H+width, :] = resize_image
+
+                #human_pixel = np.nonzero(mask == 255)
+                #human_pixel_set.append(len(human_pixel[0]))
+                # human_ratio = float(len(human_pixel[0])) / float((img.shape[0] * img.shape[1]))
+                # if human_ratio > alpha:
+                #     mask_instance_sel.append(instance_num)
+                scipy.misc.imsave('/data/vllab1/dataset/CITYSCAPES/CITY/pose/{}_{:d}.png'.format(name, instance_num), backgorund)
+                instance_pos = {'num': instance_num, 'minx': minx, 'miny': miny, 'heigh': heigh, 'width':width,
+                                'scale': scale, 'margin_V': margin_V, 'margin_H': margin_H}
+                instance_single_view_pose.append(instance_pos)
+                instance_num += 1
+
+        instance_multi_view_pose[name] = instance_single_view_pose
+
+    file_obj = open('instance_multi_view_pose.pkl', 'wb')
+    pickle.dump(instance_multi_view_pose, file_obj)
+    file_obj.close()
+
+
+def place_back_instance():
+
+    file_obj = open(os.path.join('', 'instance_multi_view_pose.pkl'), 'r')
+    instance_multi_view_pose = pickle.load(file_obj)
+    length = len(instance_multi_view_pose)
+
+    for single_view_name in instance_multi_view_pose:
+        single_view = instance_multi_view_pose[single_view_name]
+        single_view_image = np.zeros((1024, 2048, 3), dtype=np.uint8)
+        for instance_idx, instance in enumerate(single_view):
+            instance_num = instance['num']
+            scale = instance['scale']
+            minx, miny = instance['minx'], instance['miny']
+            heigh, width = instance['heigh'], instance['width']
+            margin_V, margin_H = instance['margin_V'], instance['margin_H']
+
+            instance_image = scipy.misc.imread(os.path.join('/data/vllab1/prediction',
+                                                            '{}_{:d}.png.jpg'.format(single_view_name, instance_num)))
+
+            instance_image_ori = instance_image[margin_V:margin_V+heigh, margin_H:margin_H+width]
+            instance_image_resize = scipy.misc.imresize(instance_image_ori, 1.0 / scale)
+            heigh, width = np.shape(instance_image_resize)[0], np.shape(instance_image_resize)[1]
+
+            single_view_image[miny:miny+heigh, minx:minx+width, :] = instance_image_resize
+
+        scipy.misc.imsave('{}.png'.format(single_view_name), single_view_image)
+
+        break
+
+
+def place_back_instance_h5():
+
+    data = sorted(glob(os.path.join('/data/vllab1/prediction', "*.jpg")))
+    data = []
+
+    file = open('imgname.txt', 'r')
+    for line in file:
+        data.append(line)
+        #print line,
+
+    file_obj = open(os.path.join('', 'instance_multi_view_pose.pkl'), 'r')
+    instance_multi_view_pose = pickle.load(file_obj)
+    length = len(instance_multi_view_pose)
+    cur = 0
+
+    filename = 'final_preds.h5'
+    f = h5py.File(filename, 'r')
+    preds = f['heatmaps']
+
+    for single_view_name_idx, single_view_name in enumerate(sorted(instance_multi_view_pose)):
+        print('{:d}/{:d} [{:d}]'.format(single_view_name_idx, length, cur))
+        single_view = instance_multi_view_pose[single_view_name]
+        image_name = '{}_leftImg8bit.png'.format(single_view_name)
+        city_name = single_view_name.split('_', 1)[0]
+        single_view_image = scipy.misc.imread(os.path.join(
+            '/data/vllab1/dataset/CITYSCAPES/leftImg8bit_trainvaltest/leftImg8bit/train', city_name, image_name)).astype(np.float32)
+        single_view_image_v = np.copy(single_view_image)
+        single_view_heatmp = np.zeros((1024, 2048), dtype=np.float32)
+        '''
+        for instance_idx, instance in enumerate(single_view):
+            instance_num, scale = instance['num'], instance['scale']
+            minx, miny = instance['minx'], instance['miny']
+            heigh, width = instance['heigh'], instance['width']
+            margin_V, margin_H = instance['margin_V'], instance['margin_H']
+            instance_image = scipy.misc.imread(os.path.join('/data/vllab1/prediction',
+                                                            '{}_{:d}.png.jpg'.format(single_view_name, instance_num)))
+
+            instance_image_ori = instance_image[margin_V:margin_V+heigh, margin_H:margin_H+width]
+            instance_image_resize = scipy.misc.imresize(instance_image_ori, 1.0 / scale)
+            heigh_resize, width_resize = np.shape(instance_image_resize)[0], np.shape(instance_image_resize)[1]
+            single_view_image_v[miny:miny+heigh_resize, minx:minx+width_resize, :] = instance_image_resize
+
+            head = np.round(((preds[cur, 9, 0:2] - [margin_H, margin_V]) / scale) + [minx, miny])
+
+            single_view_heatmp[int(head[1]), int(head[0])] = 1
+            cur += 1
+
+        if(len(single_view) > 9):
+            continue
+        '''
+
+        cur_size = len(single_view)
+        for cur_idx in range(0, cur_size):
+            instance_idx = cur + cur_idx
+            instance_name = data[instance_idx]
+            instance_name = instance_name.split('.')[0]
+            instance_name_idx = int(instance_name.split('_')[-1])
+            #instance_name_idx = cur_idx
+            for instance in single_view:
+                if instance['num'] == instance_name_idx:
+                    break
+
+            instance_num, scale = instance['num'], instance['scale']
+            print('{} {}'.format(instance_idx, instance_num))
+            minx, miny = instance['minx'], instance['miny']
+            heigh, width = instance['heigh'], instance['width']
+            margin_V, margin_H = instance['margin_V'], instance['margin_H']
+            instance_image = scipy.misc.imread(os.path.join('/data/vllab1/prediction',
+                                                            '{}_{:d}.png.jpg'.format(single_view_name, instance_num)))
+
+            instance_image_ori = instance_image[margin_V:margin_V+heigh, margin_H:margin_H+width]
+            instance_image_resize = scipy.misc.imresize(instance_image_ori, 1.0 / scale)
+            heigh_resize, width_resize = np.shape(instance_image_resize)[0], np.shape(instance_image_resize)[1]
+            single_view_image_v[miny:miny+heigh_resize, minx:minx+width_resize, :] = instance_image_resize
+
+            head = np.round(((preds[instance_idx, 9, 0:2] - [margin_H, margin_V]) / scale) + [minx, miny])
+
+            single_view_heatmp[int(head[1]), int(head[0])] = 1
+
+        cur += cur_size
+        #if(cur_size > 9):
+        #    continue
+
+        single_view_heatmp = scipy.ndimage.morphology.binary_dilation(single_view_heatmp, iterations=5).astype(
+            single_view_heatmp.dtype)
+        single_view_heatmp = np.dstack((single_view_heatmp, single_view_heatmp, single_view_heatmp))
+        single_view_image[np.nonzero(single_view_heatmp == 1)] = 200
+
+        scipy.misc.imsave('{}.png'.format(single_view_name), single_view_image_v)
+        scipy.misc.imsave('{}_heatmap.png'.format(single_view_name), single_view_image)
+        break
+
+
 def create_mask_img_instance():
     data = sorted(glob(os.path.join('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/image', "*.png")))
     label = sorted(glob(os.path.join('/home/andy/dataset/CITYSCAPES/for_wonderful_chou/label2_big', "*.png")))
@@ -460,9 +669,9 @@ def select_human_img():
 
 def select_human_img_2():
     alpha = 0.05
-    human_no_extra = []
+    human_w = []
 
-    data_set_dir = '../../dataset/CITYSCAPES/CITY/fine_mask'
+    data_set_dir = '../../dataset/CITYSCAPES/CITY_valid/fine_mask'
     data = sorted(glob(os.path.join(data_set_dir, "*.png")))
 
     for index, filePath in enumerate(data):
@@ -473,8 +682,11 @@ def select_human_img_2():
         full_name = filePath.split('/')[-1].split('_')
         name = '{}_{}_{}'.format(full_name[0], full_name[1], full_name[2])
         if human_ratio > alpha:
-            human_no_extra.append(name)
+            human_w.append(name)
+            image = scipy.misc.imread(os.path.join('/data/vllab1/dataset/CITYSCAPES/CITY_valid/fine_image', '{}_leftImg8bit.png'.format(name)))
+            scipy.misc.imsave(os.path.join('/data/vllab1/dataset/CITYSCAPES/CITY_valid/human_image', '{}_leftImg8bit.png'.format(name)), image)
 
+    '''
     data_set_dir = '../../dataset/CITYSCAPES/CITY/coarse_mask'
     data = sorted(glob(os.path.join(data_set_dir, "*.png")))
 
@@ -487,12 +699,13 @@ def select_human_img_2():
         name = '{}_{}_{}'.format(full_name[0], full_name[1], full_name[2])
         if human_ratio > alpha:
             human_no_extra.append(name)
+    '''
 
-    file_obj = open('human_extra.pkl', 'wb')
-    pickle.dump(human_no_extra, file_obj)
+    file_obj = open('human_w.pkl', 'wb')
+    pickle.dump(human_w, file_obj)
     file_obj.close()
 
-    print len(human_no_extra)
+    print len(human_w)
 
 
 def select_no_human_img():
@@ -727,7 +940,7 @@ def synthesis_visual():
 
         name = image_name[i].split('/')[-1]
         name = name.split('.')[0]
-	city = name[i].split('_')[0]
+        city = name[i].split('_')[0]
 
         image = scipy.misc.imread(image_name[i]).astype(np.float32)
         semantic = scipy.misc.imread(semantic_name[i]).astype(np.float32)
@@ -928,7 +1141,7 @@ def heatmap_test_visual():
         scipy.misc.imsave('ICCV/heatmap_test_visual/test_low/{}.png'.format(name), image.astype(np.uint8))
         scipy.misc.imsave('ICCV/heatmap_test_visual/test_low/{}_heatmap.png'.format(name),
                           image_heatmap.astype(np.uint8))
-        
+
 
 def valid():
     data_set_dir = '/data/vllab1/dataset/CITYSCAPES/CITY/relative_high_image'
@@ -969,12 +1182,14 @@ def read():
         scipy.misc.imsave(os.path.join('/data/vllab1/dataset/CITYSCAPES/CITY/train/relative_context_heatmap', name), heatmap)
         i +=1
 
+
 class PedestrianImage:
     def __init__(self, name, width, height):
         self.name = name
         self.width = width
         self.height = height
         self.aspect = float(width) / float(height)
+
 
 def pedestrian_from_city():
     out = '../../dataset/pedestrian/CITYSCAPES'
@@ -1000,7 +1215,7 @@ def pedestrian_from_city():
         instance = (os.path.join('../../dataset/CITYSCAPES/gtFine_trainvaltest/gtFine/train',
                                  city_name, instance_name))
 
-
+        '''
         semantic[np.nonzero(semantic != 24)] = 0
         semantic[np.nonzero(semantic != 0)] = 1
         all_labels = skimage.measure.label(semantic, background=0)
@@ -1060,43 +1275,45 @@ def pedestrian_from_city():
                     maxy = 255
                 height, width = maxy - miny, maxx - minx
 
+                if height < 20 or width < 15:
+                    continue
                 img = Image.new('F', (2048, 1024), 0)
                 ImageDraw.Draw(img).polygon(polygon, outline=1, fill=1)
-                img = scipy.misc.imresize(img, 0.25, interp='bilinear', mode=None)
+                yo = np.array(img).astype(np.float32)
+                img = scipy.misc.imresize(yo, 0.25, interp='bilinear', mode=None)
                 mask = np.array(img)
-                mask[np.nonzero(mask > 0)] = 255
+                #mask[np.nonzero(mask > 0)] = 255
                 pedestrian_image = image[miny:maxy, minx:maxx]
 
                 stroe_name = '{}_{:d}.png'.format(name, instance_num)
-                scipy.misc.imsave('../../dataset/pedestrian/CITYSCAPES_single/image/{}'.format(
+                scipy.misc.imsave('../../dataset/pedestrian/CITYSCAPES_new/image/{}'.format(
                     stroe_name), pedestrian_image.astype(np.uint8))
-                scipy.misc.imsave('../../dataset/pedestrian/CITYSCAPES_single/mask/{}'.format(
+                scipy.misc.imsave('../../dataset/pedestrian/CITYSCAPES_new/mask/{}'.format(
                     stroe_name), mask[miny:maxy, minx:maxx].astype(np.uint8))
 
                 #mask = scipy.ndimage.morphology.binary_dilation(mask).astype(mask.dtype)
 
                 mask_index = np.nonzero(mask==0)
+                mask /= 255
                 image_mask = np.copy(image)
-                image_mask[mask_index + (0,)] = 0
-                image_mask[mask_index + (1,)] = 0
-                image_mask[mask_index + (2,)] = 0
+                image_mask *= np.dstack((mask, mask, mask))
                 pedestrian_image = image_mask[miny:maxy, minx:maxx]
-                scipy.misc.imsave('../../dataset/pedestrian/CITYSCAPES_single/crop/{}'.format(
+                scipy.misc.imsave('../../dataset/pedestrian/CITYSCAPES_new/crop/{}'.format(
                     stroe_name), pedestrian_image.astype(np.uint8))
                 pedestrian_image = PedestrianImage(stroe_name, width=width, height=height)
                 pedestrian_list.append(pedestrian_image)
 
                 instance_num += 1
                 total +=1
-        '''
+
         #break
 
     print(total)
-    file_obj = open('/data/vllab1/dataset/pedestrian/CITYSCAPES_multiple/pedestrian_list.pkl', 'wb')
+    file_obj = open('/data/vllab1/dataset/pedestrian/CITYSCAPES_new/pedestrian_list.pkl', 'wb')
     pickle.dump(pedestrian_list, file_obj)
     file_obj.close()
 
-#pedestrian_from_city()
+
 def synthesis_visual_fit():
     # Image, heatmap, semantic
     dir = '/data/vllab1/Github/streetview_synthesize/Image synthesis/test'
@@ -1112,9 +1329,9 @@ def synthesis_visual_fit():
     data_len = len(heatmap_name)
 
     # pedestrian image, mask, list
-    ped_single_dir = '/data/vllab1/dataset/pedestrian/CITYSCAPES_single/image'
-    mask_single_dir = '/data/vllab1/dataset/pedestrian/CITYSCAPES_single/mask'
-    dataset_dir = '/data/vllab1/dataset/pedestrian/CITYSCAPES_single'
+    ped_single_dir = '/data/vllab1/dataset/pedestrian/CITYSCAPES_new/image'
+    mask_single_dir = '/data/vllab1/dataset/pedestrian/CITYSCAPES_new/mask'
+    dataset_dir = '/data/vllab1/dataset/pedestrian/CITYSCAPES_new'
     file_name = os.path.join(dataset_dir, 'pedestrian_list.pkl')
     file_obj = open(file_name, 'r')
     pedestrian_list = pickle.load(file_obj)
@@ -1127,9 +1344,10 @@ def synthesis_visual_fit():
     pedestrian_multi_list = pickle.load(file_obj)
 
     # parameter
-    sig, threshold = 1, 5
+    sig, threshold = 1, 1
     print(sig, threshold)
-    out_dir = '/data/vllab1/Github/streetview_synthesize/ICCV/emp/{}_{}'.format(sig, threshold)
+    out_dir = '/data/vllab1/Github/streetview_synthesize/ICCV/final/{}_{}'.format(sig, threshold)
+    #out_dir = '/data/vllab1/Github/streetview_synthesize/ICCV/wrong_random'
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
@@ -1164,7 +1382,7 @@ def synthesis_visual_fit():
             miny, maxy, minx, maxx = min(human_pixel[0]), max(human_pixel[0]), min(human_pixel[1]), max(human_pixel[1])
             height, width = maxy - miny, maxx - minx
             # invalid region
-            if height < 0 or width < 5:
+            if height < 20 or width < 15:
                 continue
             semantic_check_region = semantic[maxy*4-5:maxy*4+5, minx*4:maxx*4]
             road_pixel = len(np.nonzero(semantic_check_region == 7)[0])
@@ -1190,12 +1408,24 @@ def synthesis_visual_fit():
 
             ceny, cenx = np.round(np.mean(human_pixel[0])), np.round(np.mean(human_pixel[1]))
             pedestrian_fit_all.sort(key=lambda x: abs(x.width-width) + abs(x.height-height))
+            #random_sel = np.random.randint(0, len(pedestrian_fit_all))
 
             sel_ped_name, ped_width, ped_height = pedestrian_fit_all[0].name, pedestrian_fit_all[0].width, pedestrian_fit_all[0].height
             sel_ped_image = scipy.misc.imread(os.path.join(ped_dir, sel_ped_name)).astype(np.float32)
             sel_ped_mask = scipy.misc.imread(os.path.join(mask_dir, sel_ped_name)).astype(np.float32)/heat_alpha
             sel_ped_mask = np.dstack((sel_ped_mask, sel_ped_mask, sel_ped_mask))
             sel_ped_image *= sel_ped_mask
+
+
+            #road_pixel = np.nonzero(semantic == 7)
+            #sidewalk_pixel = np.nonzero(semantic == 8)
+            #parking_pixel = np.nonzero(semantic == 9)
+            #rail_pixel = np.nonzero(semantic == 10)
+            #possible_random = np.hstack((road_pixel, sidewalk_pixel, parking_pixel, rail_pixel))
+            #ramdom_sel = np.random.randint(0, len(possible_random[0]))
+            #ceny, cenx = possible_random[0][ramdom_sel] / 4, possible_random[1][ramdom_sel] / 4
+            #ceny -= ped_height/2
+
 
             ped_width, ped_height =  int(ped_width), int(ped_height)
             cut_upy, cut_dny, cut_lx, cut_rx = 0, 0, 0, 0
@@ -1219,7 +1449,7 @@ def synthesis_visual_fit():
                 cut_dny = dny - (256-1)
                 dny = 256-1
 
-            hole = (1-sel_ped_mask)[cut_upy:ped_height-cut_dny, cut_lx:ped_width-cut_rx, :] * image[upy:dny, lx:rx, :]
+            hole = (1-sel_ped_mask)[cut_upy:ped_height-cut_dny, cut_lx:ped_width-cut_rx, :] * image_synthesis[upy:dny, lx:rx, :]
             fill = hole + sel_ped_image[cut_upy:ped_height-cut_dny, cut_lx:ped_width-cut_rx, :]
             image_synthesis[upy:dny, lx:rx, :] = fill
 
@@ -1235,13 +1465,12 @@ def synthesis_visual_fit():
 
         #scipy.misc.imsave('ICCV/synthesis_visual/{}_image.png'.format(name), image.astype(np.uint8))
         #scipy.misc.imsave('ICCV/synthesis_visual/{}_semantic.png'.format(name), semantic_vidualize(semantic).astype(np.uint8))
-        scipy.misc.imsave({}_heatmap.png'.format(name), image_v.astype(np.uint8))
-        scipy.misc.imsave('ICCV/wrong_random/{}_synthesis.png'.format(name), image_synthesis.astype(np.uint8))
+        scipy.misc.imsave(os.path.join(out_dir, '{}_image_{}_{}.png'.format(name, sig, threshold)), image_v.astype(np.uint8))
+        scipy.misc.imsave(os.path.join(out_dir, '{}_heatmap_{}_{}.png'.format(name, sig, threshold)), image_synthesis.astype(np.uint8))
         #scipy.misc.imsave('ICCV/synthesis_visual/{}_seg.png'.format(name), blurred.astype(np.uint8))
         #scipy.misc.imsave('ICCV/synthesis_visual/{}_ped.png'.format(name), pedestrian.astype(np.uint8))
         #break
 
-synthesis_visual_fit()
 
 def pedestrian_from_Ped():
     dir = '/data/vllab1/dataset/pedestrian/completeData/image'
@@ -1271,13 +1500,11 @@ def pedestrian_from_Ped():
     file_obj.close()
 
 
-#pedestrian_from_Ped()
-
 def wrong_similiar():
-    dataset_dir = '/data/vllab1/dataset/CITYSCAPES/leftImg8bit_trainvaltest/leftImg8bit/val'
+    dataset_dir = '/data/vllab1/dataset/CITYSCAPES/leftImg8bit_trainvaltest/leftImg8bit/test'
     data = []
     for folder in os.listdir(dataset_dir):
-        path = os.path.join(dataset_dir, folder, "*.png")
+        path = os.path.join(dataset_dir, folder, "munich_000094_000019_leftImg8bit.png")
         data.extend(glob(path))
     image_name = sorted(data)
     data_len = len(image_name)
@@ -1310,7 +1537,48 @@ def wrong_similiar():
         #img_ret = poissonblending.blend(image, human_image, human_mask, offset=(0, 0))
 
 
-        scipy.misc.imsave('/data/vllab1/Github/streetview_synthesize/ICCV/wrong_similiar/{}'.format(name), image)
+        scipy.misc.imsave('/data/vllab1/CVPR/demo/baseline_similiar/{}'.format(name), image)
+        #break
+
+
+def wrong_similiar_random():
+    dataset_dir = '/data/vllab1/dataset/CITYSCAPES/leftImg8bit_trainvaltest/leftImg8bit/test'
+    data = []
+    for folder in os.listdir(dataset_dir):
+        path = os.path.join(dataset_dir, folder, "berlin_000116_000019_leftImg8bit.png")
+        data.extend(glob(path))
+    image_name = sorted(data)
+    data_len = len(image_name)
+
+    dataset_dir = '../../dataset/CITYSCAPES/CITY'
+    file_obj = open(os.path.join(dataset_dir, 'human_w.pkl'), 'r')
+    human_file_name = pickle.load(file_obj)
+    np.random.shuffle(human_file_name)
+    for i in range(0, 150):
+        print('{:d}/{:d}'.format(i, data_len))
+        name = image_name[0].split('/')[-1]
+        human_name = human_file_name[i%192]
+        city = human_name.split('_')[0]
+        image = scipy.misc.imread(image_name[0]).astype(np.float32)
+
+        human_image_name = '{}_leftImg8bit.png'.format(human_name)
+        human_mask_name = '{}_gtFine_labelIds.png'.format(human_name)
+        human_image = scipy.misc.imread(os.path.join('/data/vllab1/dataset/CITYSCAPES/leftImg8bit_trainvaltest/leftImg8bit/train',
+                                                     city, human_image_name)).astype(np.float32)
+        human_mask = scipy.misc.imread(os.path.join('/data/vllab1/dataset/CITYSCAPES/gtFine_trainvaltest/gtFine/train',
+                                                    city, human_mask_name)).astype(np.float32)
+
+        human_mask[np.nonzero(human_mask != 24)] = 0
+        human_mask[np.nonzero(human_mask != 0)] = 1
+
+        human_mask = np.dstack((human_mask, human_mask, human_mask))
+        image = image * (1-human_mask) + human_image * human_mask
+        image = scipy.misc.imresize(image, 0.25, interp='bilinear', mode=None)
+
+        #img_ret = poissonblending.blend(image, human_image, human_mask, offset=(0, 0))
+
+
+        scipy.misc.imsave('/data/vllab1/CVPR/demo/baseline_similiar/{:d}_{}'.format(i, name), image)
         #break
 
 
@@ -1523,8 +1791,6 @@ def wrong_random():
         #scipy.misc.imsave('ICCV/wrong_random/{}_semantic.png'.format(name), semantic_vidualize(semantic).astype(np.uint8))
         #break
 
-
-#wrong_random()
 
 def creat_mask_image_for_high():
     dataset_dir = '../../dataset/CITYSCAPES/CITY'
@@ -1752,3 +2018,1334 @@ def valid_sigmoid():
         image[np.nonzero(image < 10)] = 0
         image[np.nonzero(image != 0)] = 255
         scipy.misc.imsave(os.path.join('/data/vllab1/combine_treshold', name), image)
+
+
+def hyper_visual():
+
+    dir = '/data/vllab1/Github/streetview_synthesize/ICCV/final/1_1'
+    h1_1 = sorted(glob(os.path.join(dir, "*.png")))
+    dir = '/data/vllab1/Github/streetview_synthesize/ICCV/final/1_5'
+    h1_5 = sorted(glob(os.path.join(dir, "*.png")))
+    dir = '/data/vllab1/Github/streetview_synthesize/ICCV/final/1_10'
+    h1_10 = sorted(glob(os.path.join(dir, "*.png")))
+    dir = '/data/vllab1/Github/streetview_synthesize/ICCV/final/3_1'
+    h3_1 = sorted(glob(os.path.join(dir, "*.png")))
+    dir = '/data/vllab1/Github/streetview_synthesize/ICCV/final/3_5'
+    h3_5 = sorted(glob(os.path.join(dir, "*.png")))
+    dir = '/data/vllab1/Github/streetview_synthesize/ICCV/final/3_10'
+    h3_10 = sorted(glob(os.path.join(dir, "*.png")))
+    dir = '/data/vllab1/Github/streetview_synthesize/ICCV/final/5_1'
+    h5_1 = sorted(glob(os.path.join(dir, "*.png")))
+    dir = '/data/vllab1/Github/streetview_synthesize/ICCV/final/5_5'
+    h5_5 = sorted(glob(os.path.join(dir, "*.png")))
+    dir = '/data/vllab1/Github/streetview_synthesize/ICCV/final/5_10'
+    h5_10 = sorted(glob(os.path.join(dir, "*.png")))
+    data_len = len(h1_1)
+    for i in range(0, data_len):
+        name = h1_1[i].split('/')[-1]
+        img1_1 = scipy.misc.imread(h1_1[i])
+        img1_5 = scipy.misc.imread(h1_5[i])
+        img1_10 = scipy.misc.imread(h1_10[i])
+        img3_1 = scipy.misc.imread(h3_1[i])
+        img3_5 = scipy.misc.imread(h3_5[i])
+        img3_10 = scipy.misc.imread(h3_10[i])
+        img5_1 = scipy.misc.imread(h5_1[i])
+        img5_5 = scipy.misc.imread(h5_5[i])
+        img5_10 = scipy.misc.imread(h5_10[i])
+        yo = np.array([img1_1, img1_5, img1_10, img3_1, img3_5, img3_10, img5_1, img5_5, img5_10])
+        scipy.misc.imsave('/data/vllab1/Github/streetview_synthesize/ICCV/hyper_final_visual/{}'.format(name),
+                          merge(yo, (3, 3)))
+        #break
+
+
+def real_test():
+    dir = '/data/vllab1/Github/streetview_synthesize/ICCV/selected'
+    sel = sorted(glob(os.path.join(dir, "*.png")))
+    np.random.shuffle(sel)
+    data_len = len(sel)
+    ans_correct_num = 0
+    sim_correct_num = 0
+    ran_correct_num = 0
+    for i in range(0, data_len):
+        print('{:d}/{:d}'.format(i, data_len))
+        name_split = sel[i].split('/')[-1].split('_')
+        name = name_split[0] + '_' + name_split[1] + '_' + name_split[2]
+        similiar = sorted(glob(os.path.join('/data/vllab1/Github/streetview_synthesize/ICCV/wrong_similiar', "{}*.png".format(name))))
+        random = sorted(
+            glob(os.path.join('/data/vllab1/Github/streetview_synthesize/ICCV/wrong_random', "{}*.png".format(name))))
+
+        syn = scipy.misc.imread(sel[i])
+        sim = scipy.misc.imread(similiar[0])
+        ran = scipy.misc.imread(random[0])
+        TEST = [syn, sim, ran]
+        TEST_QUES = [0, 1, 2]
+        np.random.shuffle(TEST_QUES)
+        for j in range(1,4):
+            if TEST_QUES[j-1] == 0:
+                TEST_ANS = j
+            elif TEST_QUES[j-1] == 1:
+                TEST_SIM = j
+            elif TEST_QUES[j-1] == 2:
+                TEST_RAN = j
+        visual = np.hstack((TEST[TEST_QUES[0]], TEST[TEST_QUES[1]], TEST[TEST_QUES[2]]))
+        scipy.misc.imshow(visual)
+        number = input('Your ANS: ')
+        if number == TEST_ANS:
+            ans_correct_num +=1
+        elif number == TEST_SIM:
+            sim_correct_num +=1
+        elif number == TEST_RAN:
+            ran_correct_num +=1
+
+
+    print('syn score: {:d}/{:d}'.format(ans_correct_num, data_len))
+    print('sim score: {:d}/{:d}'.format(sim_correct_num, data_len))
+    print('ran score: {:d}/{:d}'.format(ran_correct_num, data_len))
+
+
+def move_inpainting_visual():
+    data = glob(os.path.join('/data/vllab1/Github/streetview_synthesize/Context Encoders_Feature Learning by Inpainting/PoissonGaussSeidel', "*.png"))
+
+    # data_length = len(data)
+    # high < 256 because want to cut the bottom
+    # offs_h = np.random.randint(low=0, high=200, size=data_length)
+    # offs_h_end = offs_h + 256
+    # offs_w = np.random.randint(low=0, high=512, size=data_length)
+    # offs_w_end = offs_w + 512
+    # print offs_h, offs_h_end
+
+    for index, filePath in enumerate(data):
+        print ('%d/%d' % (index, len(data)))
+        img = scipy.misc.imread(data[index])
+        name = data[index].split('/')[-1].split('_')
+        out_name = '{}_{}_{}_poisson_{}'.format(name[0], name[1], name[2], name[3])
+
+        scipy.misc.imsave(os.path.join('/data/vllab1/Github/streetview_synthesize/Context Encoders_Feature Learning by Inpainting/PoissonGaussSeidel_visual', out_name), img)
+        #break
+
+
+def move_train_valid_test():
+    # Ref select_human_img_2
+
+    data_set_dir = '../../dataset/CITYSCAPES/CITY_valid/human_image'
+    data = sorted(glob(os.path.join(data_set_dir, "*.png")))
+
+    for index, filePath in enumerate(data):
+        print ('{}/{}'.format(index, len(data)))
+        name = filePath.split('/')[-1].split('.')[0]
+        name_test = name.split('_')
+        mask_name = '{}_{}_{}_gtFine_labelIds.png'.format(name_test[0], name_test[1], name_test[2])
+        img = scipy.misc.imread(os.path.join(
+            '/data/vllab1/dataset/CITYSCAPES/CITY_valid/fine_mask', mask_name)).astype(np.uint8)
+        scipy.misc.imsave('/data/vllab1/dataset/CITYSCAPES/CITY_valid/human_mask/' + mask_name, img.astype(np.uint8))
+        #break
+
+
+def inpainting_style():
+    dataset_dir = '../../dataset/CITYSCAPES/CITY'
+    file_obj = open(os.path.join(dataset_dir, 'human_w.pkl'), 'r')
+    human_file_name = pickle.load(file_obj)
+    length = len(human_file_name)
+
+    for index in range(0, length):
+        name = human_file_name[index]
+        print ('%d/%d : %s' % (index, length, name))
+        image_name = '{}_leftImg8bit.png'.format(name)
+        mask_name = '{}_gtFine_labelIds.png'.format(name)
+        instance_name = '{}_gtFine_polygons.json'.format(name)
+        city_name = instance_name.split('_', 1)[0]
+
+        # astype(np.float32) somehow do the normalize
+        # should use if the inpainting method is context
+        image = scipy.misc.imread(os.path.join(
+            dataset_dir, 'fine_image', image_name)).astype(np.float32)
+        mask_ori = scipy.misc.imread(os.path.join(
+            dataset_dir, 'fine_mask', mask_name)).astype(np.float32) / 255
+        instance = (os.path.join('../../dataset/CITYSCAPES/gtFine_trainvaltest/gtFine/train',
+                                 city_name, instance_name))
+
+        with open(instance) as data_file:
+            label_instance = json.load(data_file)
+            data_file.close()
+
+        objects = label_instance['objects']
+        image_style = np.copy(image)
+        instance_obj = []
+        for obj in objects:
+            if obj['label'] == 'person':
+                polygon = [tuple(poly) for poly in obj['polygon']]
+                img = Image.new('F', (2048, 1024), 0)
+                ImageDraw.Draw(img).polygon(polygon, outline=1, fill=1)
+                img = scipy.misc.imresize(img, 0.25, interp='bilinear', mode=None)
+                mask = np.array(img)
+                human_pixel = np.nonzero(mask > 0)
+                miny, maxy, minx, maxx = min(human_pixel[0]), max(human_pixel[0]), min(human_pixel[1]), max(
+                    human_pixel[1])
+                ori_heigh, ori_width = maxy - miny, maxx - minx
+                size = ori_heigh * ori_width
+
+                instance_pos = {'size': size, 'minx': minx, 'miny': miny, 'ori_heigh': ori_heigh, 'ori_width': ori_width}
+                instance_obj.append(instance_pos)
+                #mask[human_pixel] = 1
+                #mask_image = image * np.dstack((mask, mask, mask))
+
+        newlist = sorted(instance_obj, key=lambda k: k['size'])
+        for instance in newlist:
+            minx, miny = instance['minx'], instance['miny']
+            ori_heigh, ori_width = instance['ori_heigh'], instance['ori_width']
+            range_y = (np.arange(256) + miny) % 256
+            range_x = (np.arange(512) + minx - ori_width) % 512
+            yooo = True
+            for minyy in range_y:
+                for minxx in range_x:
+                    if minyy + ori_heigh > 256 or minxx + ori_width > 512:
+                        continue
+                    if np.sum(mask_ori[minyy:minyy+ori_heigh, minxx:minxx+ ori_width]) == 0:
+                        image_style[miny:miny+ori_heigh, minx:minx+ori_width, :] = image[minyy:minyy+ori_heigh, minxx:minxx+ ori_width]
+                        yooo = False
+                        break
+            if(yooo):
+                print('noooooo!!')
+
+        scipy.misc.imsave('style/{}'.format(image_name), image_style)
+        #break
+
+
+def create_instance_for_pos():
+    alpha = 0.01
+    dataset_dir = '../../dataset/CITYSCAPES/CITY_valid'
+    file_obj = open(os.path.join(dataset_dir, 'human_w.pkl'), 'r')
+    human_file_name = pickle.load(file_obj)
+    length = len(human_file_name)
+
+    instance_multi_view_pose = {}
+    for index in range(0, length):
+        name = human_file_name[index]
+        print ('%d/%d : %s' % (index, length, name))
+        image_name = '{}_leftImg8bit.png'.format(name)
+        mask_name = '{}_gtFine_labelIds.png'.format(name)
+        instance_name = '{}_gtFine_polygons.json'.format(name)
+        city_name = instance_name.split('_', 1)[0]
+
+        # astype(np.float32) somehow do the normalize
+        # should use if the inpainting method is context
+        image = scipy.misc.imread(os.path.join(
+            '/data/vllab1/dataset/CITYSCAPES/leftImg8bit_trainvaltest/leftImg8bit/val', city_name, image_name)).astype(np.float32)
+        mask_ori = scipy.misc.imread(os.path.join(
+            '/data/vllab1/dataset/CITYSCAPES/leftImg8bit_trainvaltest/leftImg8bit/val', city_name, image_name)).astype(np.float32)
+        instance = (os.path.join('../../dataset/CITYSCAPES/gtFine_trainvaltest/gtFine/val',
+                                 city_name, instance_name))
+
+        with open(instance) as data_file:
+            label_instance = json.load(data_file)
+            data_file.close()
+
+        objects = label_instance['objects']
+        instance_num = 0
+        mask_instance = []
+        human_pixel_set = []
+        instance_single_view_pose = []
+        for obj in objects:
+            if obj['label'] == 'person':
+                #print(object['polygon'])
+                polygon = [tuple(poly) for poly in obj['polygon']]
+                img = Image.new('F', (2048, 1024), 0)
+                ImageDraw.Draw(img).polygon(polygon, outline=1, fill=1)
+                #img = scipy.misc.imresize(img, 0.25, interp='bilinear', mode=None)
+                mask = np.array(img)
+                human_pixel = np.nonzero(mask > 0)
+                miny, maxy, minx, maxx = min(human_pixel[0]), max(human_pixel[0]), min(human_pixel[1]), max(
+                    human_pixel[1])
+                ori_heigh, ori_width = maxy - miny, maxx - minx
+
+                mask[human_pixel] = 1
+                mask_image = image * np.dstack((mask, mask, mask))
+                #mask_instance.append(mask)
+
+                scale =  float(256)/max(ori_heigh, ori_width)
+                resize_image = scipy.misc.imresize(mask_image[miny:maxy, minx:maxx, :], scale)
+                backgorund = np.zeros((256, 256, 3), dtype=np.float32)
+                heigh, width = np.shape(resize_image)[0], np.shape(resize_image)[1]
+                margin_V = (256 - heigh) / 2
+                margin_H = (256 - width) / 2
+                backgorund[margin_V:margin_V+heigh, margin_H:margin_H+width, :] = resize_image
+
+                #human_pixel = np.nonzero(mask == 255)
+                #human_pixel_set.append(len(human_pixel[0]))
+                # human_ratio = float(len(human_pixel[0])) / float((img.shape[0] * img.shape[1]))
+                # if human_ratio > alpha:
+                #     mask_instance_sel.append(instance_num)
+                scipy.misc.imsave('/data/vllab1/dataset/CITYSCAPES/CITY_valid/pose/{}_{:d}.png'.format(name, instance_num), backgorund)
+                instance_pos = {'num': instance_num, 'minx': minx, 'miny': miny, 'heigh': heigh, 'width':width,
+                                'scale': scale, 'margin_V': margin_V, 'margin_H': margin_H}
+                instance_single_view_pose.append(instance_pos)
+                instance_num += 1
+
+        instance_multi_view_pose[name] = instance_single_view_pose
+        #break
+
+    file_obj = open('instance_multi_view_pose.pkl', 'wb')
+    pickle.dump(instance_multi_view_pose, file_obj)
+    file_obj.close()
+
+
+def re_permuate_h5():
+    data = []
+    file = open(os.path.join('/data/vllab1/CVPR/datasetPed/cityscape_valid', 'imgname.txt'), 'r')
+    for line in file:
+        data.append(line)
+
+    # Get pos prediction
+    filename = 'final_preds.h5'
+    f = h5py.File(os.path.join('/data/vllab1/CVPR/datasetPed/cityscape_valid', filename), 'r')
+    preds = f['heatmaps']
+
+    # Get instance_multi_view_pose
+    file_obj = open(os.path.join('/data/vllab1/CVPR/datasetPed/cityscape_valid', 'instance_multi_view_pose.pkl'), 'r')
+    instance_multi_view_pose = pickle.load(file_obj)
+    length = len(instance_multi_view_pose)
+
+    order = np.zeros(811)
+    cur = 0
+    for single_view_name_idx, single_view_name in enumerate(sorted(instance_multi_view_pose)):
+        print('{:d}/{:d} [{:d}]'.format(single_view_name_idx, length, cur))
+        # Parse each pedestrian
+        single_view = instance_multi_view_pose[single_view_name]
+        cur_size = len(single_view)
+        for cur_idx in range(0, cur_size):
+            # Find the correct order match
+            instance_idx = cur + cur_idx
+            instance_name = data[instance_idx]
+            instance_name = instance_name.split('.')[0]
+            instance_name_idx = int(instance_name.split('_')[-1])
+            order[cur + instance_name_idx] = instance_idx
+        # Next view
+        cur += cur_size
+
+    file_obj = open(os.path.join('/data/vllab1/CVPR/datasetPed/cityscape_valid', 'order.pkl'), 'wb')
+    pickle.dump(order, file_obj)
+    file_obj.close()
+
+
+def create_datasetPed_cityscape():
+    dataset_dir = '../../dataset/CITYSCAPES/CITY_valid'
+
+    # Get image name order
+    # Get image name order
+    file_obj = open(os.path.join('/data/vllab1/CVPR/datasetPed/cityscape_valid', 'order.pkl'), 'r')
+    order = pickle.load(file_obj)
+
+    # Get instance_multi_view_pose
+    file_obj = open(os.path.join('/data/vllab1/CVPR/datasetPed/cityscape_valid', 'instance_multi_view_pose.pkl'), 'r')
+    instance_multi_view_pose = pickle.load(file_obj)
+    length = len(instance_multi_view_pose)
+
+    # Get pos prediction
+    filename = 'final_preds.h5'
+    f = h5py.File(os.path.join('/data/vllab1/CVPR/datasetPed/cityscape_valid', filename), 'r')
+    preds = f['heatmaps']
+    preds_coordinate = f['preds']
+
+    # Panomata
+    PedMeta_all = []
+    # Parse each view
+    cur = 0
+    for single_view_name_idx, single_view_name in enumerate(sorted(instance_multi_view_pose)):
+        print('{:d}/{:d} [{:d}]'.format(single_view_name_idx, length, cur))
+        # Get all needed files name
+        image_name = '{}_leftImg8bit.png'.format(single_view_name)
+        inpainting_name = '{}_poisson_leftImg8bit.png'.format(single_view_name)
+        mask_name = '{}_gtFine_labelIds.png'.format(single_view_name)
+        instance_name = '{}_gtFine_polygons.json'.format(single_view_name)
+        city_name = single_view_name.split('_', 1)[0]
+        single_view_image = scipy.misc.imread(os.path.join(
+            '/data/vllab1/dataset/CITYSCAPES/leftImg8bit_trainvaltest/leftImg8bit/val', city_name, image_name)).astype(np.float32)
+
+        # Get all needed files
+        #single_view_image = scipy.misc.imread(os.path.join(dataset_dir, 'fine_image', image_name)).astype(np.float32)
+        #mask = scipy.misc.imread(os.path.join(dataset_dir, 'fine_mask', mask_name)).astype(np.float32)
+        #inpainting = scipy.misc.imread(os.path.join(
+        #    '/data/vllab1/Github/streetview_synthesize/Context Encoders_Feature Learning by Inpainting/python_blend', inpainting_name)).astype(np.float32)
+        instance = (os.path.join('../../dataset/CITYSCAPES/gtFine_trainvaltest/gtFine/val',
+                                 city_name, instance_name))
+        with open(instance) as data_file:
+            label_instance = json.load(data_file)
+            data_file.close()
+
+        # Pre calculate mask
+        objects = label_instance['objects']
+        mask_set = []
+        size_set = []
+        for obj in objects:
+            if obj['label'] == 'person':
+                polygon = [tuple(poly) for poly in obj['polygon']]
+                # Get polygon mask
+                img = Image.new('F', (2048, 1024), 0)
+                ImageDraw.Draw(img).polygon(polygon, outline=1, fill=1)
+                #img = scipy.misc.imresize(img, 0.25, interp='bilinear', mode=None)
+                mask = np.array(img)
+                human_pixel = np.nonzero(mask > 0)
+                miny, maxy, minx, maxx = min(human_pixel[0]), max(human_pixel[0]), min(human_pixel[1]), max(
+                    human_pixel[1])
+                ori_heigh, ori_width = maxy - miny, maxx - minx
+
+                mask[human_pixel] = 1
+                mask_set.append(mask[miny:maxy, minx:maxx])
+                size_set.append([ori_heigh, ori_width])
+                #mask_image = single_view_image * np.dstack((mask, mask, mask))
+
+        # Parse each pedestrian
+        single_view = instance_multi_view_pose[single_view_name]
+        cur_size = len(single_view)
+        for cur_idx in range(0, cur_size):
+            # Find the correct order match
+            order_idx = cur + cur_idx
+            pred_idx = order[order_idx]
+
+            #instance_name = data[instance_idx]
+            #instance_name = instance_name.split('.')[0]
+            #instance_name_idx = int(instance_name.split('_')[-1])
+            # instance_name_idx = cur_idx
+            #for instance in single_view:
+            #    if instance['num'] == instance_name_idx:
+            #        break
+
+            # Get correct mask-image
+            instance = single_view[cur_idx]
+            instance_num, scale = instance['num'], instance['scale']
+            print('{} {}'.format(pred_idx, instance_num))
+            minx, miny = instance['minx'], instance['miny']
+            heigh, width = instance['heigh'], instance['width']
+            margin_V, margin_H = instance['margin_V'], instance['margin_H']
+
+            ori_heigh, ori_width = size_set[instance_num]
+            instance_image = single_view_image[miny:miny + ori_heigh, minx:minx + ori_width]
+            mask = mask_set[instance_num]
+            mask_image = instance_image * np.dstack((mask, mask, mask))
+            mask *= 255
+
+            # Coordinate visual
+            #instance_image_visual = scipy.misc.imread(
+            #    os.path.join('/data/vllab1/prediction', '{}_{:d}.png.jpg'.format(single_view_name, instance_num)))
+            #instance_image_ori_visual = instance_image_visual[margin_V:margin_V + heigh, margin_H:margin_H + width]
+            #instance_image_resize_visual = scipy.misc.imresize(instance_image_ori_visual, (ori_heigh, ori_width))
+
+            # Heatmap visual
+            instance_image_resize_visual_pose = np.copy(mask_image)
+
+            heatmap_head = preds[pred_idx, 9]
+            heatmap_head = scipy.misc.imresize(heatmap_head, 4.0, interp='bilinear', mode=None)
+            heatmap_head_ori = heatmap_head[margin_V:margin_V + heigh, margin_H:margin_H + width]
+            heatmap_head_ori_resize = scipy.misc.imresize(heatmap_head_ori, (ori_heigh, ori_width))
+            instance_image_resize_visual_pose[:, :, 0] += heatmap_head_ori_resize
+
+            heatmap_feet = preds[pred_idx, 0] + preds[pred_idx, 5]
+            heatmap_feet = scipy.misc.imresize(heatmap_feet, 4.0, interp='bilinear', mode=None)
+            heatmap_feet_ori = heatmap_feet[margin_V:margin_V + heigh, margin_H:margin_H + width]
+            heatmap_feet_ori_resize = scipy.misc.imresize(heatmap_feet_ori, (ori_heigh, ori_width))
+            instance_image_resize_visual_pose[:, :, 2] += heatmap_feet_ori_resize
+
+            instance_image_resize_visual_pose[np.nonzero(instance_image_resize_visual_pose >= 255)] = 255
+
+            out_name = '{}_{:d}.png'.format(single_view_name, instance_num)
+            PedMeta = {'name': out_name, 'preds': preds[pred_idx], 'preds_coordinate': preds_coordinate[pred_idx]}
+            PedMeta_all.append(PedMeta)
+            scipy.misc.imsave(
+                os.path.join('/data/vllab1/CVPR/datasetPed/cityscape_valid/image',
+                             out_name), mask_image.astype(np.uint8))
+            scipy.misc.imsave(
+                os.path.join('/data/vllab1/CVPR/datasetPed/cityscape_valid/mask',
+                             out_name), mask.astype(np.uint8))
+            #scipy.misc.imsave(
+            #    os.path.join('/data/vllab1/CVPR/datasetPed/cityscape_valid/visual',
+            #                 out_name), instance_image_resize_visual.astype(np.uint8))
+            scipy.misc.imsave(
+                os.path.join('/data/vllab1/CVPR/datasetPed/cityscape_valid/visual',
+                             '{}_{:d}_heatmap.png'.format(single_view_name, instance_num)), instance_image_resize_visual_pose.astype(np.uint8))
+        # Next view
+        cur += cur_size
+        #break
+
+    file_obj = open('/data/vllab1/CVPR/datasetPed/cityscape_valid/PedMeta.pkl', 'wb')
+    pickle.dump(PedMeta_all, file_obj)
+    file_obj.close()
+
+
+def create_dataset_heatmap_pos_coordinate():
+    dataset_dir = '../../dataset/CITYSCAPES/CITY_valid'
+
+    # Get image name order
+    file_obj = open(os.path.join('/data/vllab1/CVPR/datasetPed/cityscape_valid', 'order.pkl'), 'r')
+    order = pickle.load(file_obj)
+
+    # Get instance_multi_view_pose
+    file_obj = open(os.path.join('/data/vllab1/CVPR/datasetPed/cityscape_valid', 'instance_multi_view_pose.pkl'), 'r')
+    instance_multi_view_pose = pickle.load(file_obj)
+    length = len(instance_multi_view_pose)
+
+    # Get pos prediction
+    filename = 'final_preds.h5'
+    f = h5py.File(os.path.join('/data/vllab1/CVPR/datasetPed/cityscape_valid', filename), 'r')
+    preds = f['preds']
+
+    # Parse each view
+    cur = 0
+    for single_view_name_idx, single_view_name in enumerate(sorted(instance_multi_view_pose)):
+        # Count
+        single_view = instance_multi_view_pose[single_view_name]
+        cur_size = len(single_view)
+        print('{:d}/{:d} [{:d}]'.format(single_view_name_idx, length, cur))
+
+        # Get all needed files name
+        image_name = '{}_leftImg8bit.png'.format(single_view_name)
+        inpainting_name = '{}_leftImg8bit_poissopn.png'.format(single_view_name)
+        mask_name = '{}_gtFine_labelIds.png'.format(single_view_name)
+        instance_name = '{}_gtFine_polygons.json'.format(single_view_name)
+        city_name = single_view_name.split('_', 1)[0]
+
+        # Get all needed files
+        single_view_image = scipy.misc.imread(os.path.join(dataset_dir, 'human_image', image_name)).astype(np.float32)
+        mask = scipy.misc.imread(os.path.join(dataset_dir, 'human_mask', mask_name)).astype(np.float32)
+        inpainting = scipy.misc.imread(os.path.join(
+            '/data/vllab1/Github/streetview_synthesize/Context Encoders_Feature Learning by Inpainting/out_valid/out_blend', inpainting_name)).astype(np.float32)
+        instance = (os.path.join('../../dataset/CITYSCAPES/gtFine_trainvaltest/gtFine/val',
+                                 city_name, instance_name))
+        with open(instance) as data_file:
+            label_instance = json.load(data_file)
+            data_file.close()
+
+        # Cacualte all instance
+        objects = label_instance['objects']
+        instance_num = 0
+        mask_instance = []
+        human_pixel_set = []
+        for obj in objects:
+            if obj['label'] == 'person':
+                polygon = [tuple(poly) for poly in obj['polygon']]
+                img = Image.new('F', (2048, 1024), 0)
+                ImageDraw.Draw(img).polygon(polygon, outline=1, fill=1)
+                img = scipy.misc.imresize(img, 0.25, interp='bilinear', mode=None)
+                mask = np.array(img)
+                mask[np.nonzero(mask > 0)] = 255
+                mask_instance.append(mask)
+
+                human_pixel = np.nonzero(mask == 255)
+                human_pixel_set.append(len(human_pixel[0]))
+                instance_num += 1
+
+        # Sorting (meanwhile maintain original order)
+        human_pixel_index = np.argsort(-np.array(human_pixel_set))
+        mask_instance_sorted = []
+        for sorted_index in human_pixel_index:
+            mask_instance_sorted.append(mask_instance[sorted_index])
+        print(instance_num)
+        if instance_num > 20:
+            # Select the up to 10 biggest instance
+            instance_num = 20
+
+        # Produce dataset pair [image, heatmap]
+        instance_array = np.arange(instance_num)
+        possible_c = np.arange(instance_num)
+        np.random.shuffle(possible_c)
+        if len(possible_c) > 10:
+            # Cn0 + Cn1 + Cn2 + ... + Cnn-1
+            # Random select up to 10 possible combinations
+            possible_c = possible_c[0:10]
+        for c_idx in possible_c:
+            instance_combine = list(itertools.combinations(instance_array, c_idx))
+            np.random.shuffle(instance_combine)
+            if len(instance_combine) > 4:
+                # Random select up to 4 combinations under one possible combinations. ex:
+                # Cn3: (1, 2, 8), (2, 4, 6), (5, 18, 19), (3, 4, 5)
+                instance_combine = instance_combine[0:4]
+            for i_idx, combine_list in enumerate(instance_combine):
+                img = np.copy(single_view_image)
+                mask = np.zeros((256, 512), dtype=np.float32)
+                heatmap = np.zeros((256, 512, 3), dtype=np.float32)
+                for m_idx, m in enumerate(mask_instance_sorted):
+                    if m_idx in combine_list:
+                        mask[np.nonzero(m == 255)] = 1
+                    else:
+                        order_idx = cur + human_pixel_index[m_idx]
+                        pred_idx = order[order_idx]
+
+                        instance = single_view[human_pixel_index[m_idx]]
+                        instance_num, scale = instance['num'], instance['scale']
+                        minx, miny = int(np.round(instance['minx'] / 4.0)), int(np.round(instance['miny'] / 4.0))
+                        heigh, width = instance['heigh'], instance['width']
+                        margin_V, margin_H = instance['margin_V'], instance['margin_H']
+
+                        # Get corrdinate
+                        head = np.round(((preds[pred_idx, 9, 0:2] - [margin_H, margin_V]) / (scale * 4.0)) + [minx, miny])
+                        foot_l = np.round(((preds[pred_idx, 0, 0:2] - [margin_H, margin_V]) / (scale * 4.0)) + [minx, miny])
+                        foot_r = np.round(((preds[pred_idx, 5, 0:2] - [margin_H, margin_V]) / (scale * 4.0)) + [minx, miny])
+
+                        if head[1] >= 256:
+                            head[1] = 255
+                        if head[0] >= 512:
+                            head[0] = 511
+                        if foot_l[1] >= 256:
+                            foot_l[1] = 255
+                        if foot_l[0] >= 512:
+                            foot_l[0] = 511
+                        if foot_r[1] >= 256:
+                            foot_r[1] = 255
+                        if foot_r[0] >= 512:
+                            foot_r[0] = 511
+
+                        pred_height = - head[1] + ((foot_l[1] + foot_r[1]) / 2)
+                        sigma = 1 + (pred_height / 8)
+
+                        # Gaussian blur
+                        heatmap_head = np.zeros((256, 512), dtype=np.float32)
+                        heatmap_head[head[1], head[0]] = 1
+                        heatmap_head = gaussian_filter(heatmap_head, sigma=sigma)
+                        heatmap_head /= np.max(heatmap_head)
+
+                        heatmap_foot = np.zeros((256, 512), dtype=np.float32)
+                        heatmap_foot[foot_l[1], foot_l[0]] = 1
+                        heatmap_foot[foot_r[1], foot_r[0]] = 1
+                        heatmap_foot = gaussian_filter(heatmap_foot, sigma=sigma)
+                        heatmap_foot /= np.max(heatmap_foot)
+
+                        # Generate heatmap
+                        heatmap[np.nonzero(m == 255) + (1,)] = 1
+                        heatmap[:, :, 0] += heatmap_head
+                        heatmap[:, :, 2] += heatmap_foot
+
+                # Fixed colore weried, np.float32 will aotuomatically normalized inf 0~1
+                mask = np.dstack((mask, mask, mask))
+                img_instace = img * mask + inpainting * (1 - mask)
+
+                heatmap *= 255
+                heatmap[np.nonzero(heatmap>255)] = 255
+                scipy.misc.imsave('/data/vllab1/CVPR/dataset/valid/image/{}_{:d}_{:d}.png'.format(
+                    image_name.split('.')[0], c_idx, i_idx), img_instace)
+                scipy.misc.imsave('/data/vllab1/CVPR/dataset/valid/heatmap/{}_{:d}_{:d}.png'.format(
+                    image_name.split('.')[0], c_idx, i_idx), heatmap)
+
+        cur += cur_size
+        #break
+
+
+def create_dataset_heatmap_pos():
+    dataset_dir = '../../dataset/CITYSCAPES/CITY'
+
+    # Get image name order
+    file_obj = open(os.path.join('', 'order.pkl'), 'r')
+    order = pickle.load(file_obj)
+
+    # Get instance_multi_view_pose
+    file_obj = open(os.path.join('', 'instance_multi_view_pose.pkl'), 'r')
+    instance_multi_view_pose = pickle.load(file_obj)
+    length = len(instance_multi_view_pose)
+
+    # Get pos prediction
+    filename = 'final_preds.h5'
+    f = h5py.File(filename, 'r')
+    preds = f['preds']
+
+    # Parse each view
+    cur = 0
+    for single_view_name_idx, single_view_name in enumerate(sorted(instance_multi_view_pose)):
+        # Count
+        single_view = instance_multi_view_pose[single_view_name]
+        cur_size = len(single_view)
+        print('{:d}/{:d} [{:d}]'.format(single_view_name_idx, length, cur))
+
+        # Get all needed files name
+        image_name = '{}_leftImg8bit.png'.format(single_view_name)
+        inpainting_name = '{}_poisson_leftImg8bit.png'.format(single_view_name)
+        mask_name = '{}_gtFine_labelIds.png'.format(single_view_name)
+        instance_name = '{}_gtFine_polygons.json'.format(single_view_name)
+        city_name = single_view_name.split('_', 1)[0]
+        #single_view_image = scipy.misc.imread(os.path.join(
+        #    '/data/vllab1/dataset/CITYSCAPES/leftImg8bit_trainvaltest/leftImg8bit/train', city_name, image_name)).astype(np.float32)
+        #single_view_image_v = np.copy(single_view_image)
+        #single_view_heatmp = np.zeros((1024, 2048), dtype=np.float32)
+
+        # Get all needed files
+        single_view_image = scipy.misc.imread(os.path.join(dataset_dir, 'fine_image', image_name)).astype(np.float32)
+        mask = scipy.misc.imread(os.path.join(dataset_dir, 'fine_mask', mask_name)).astype(np.float32)
+        inpainting = scipy.misc.imread(os.path.join(
+            '/data/vllab1/Github/streetview_synthesize/Context Encoders_Feature Learning by Inpainting/python_blend', inpainting_name)).astype(np.float32)
+        instance = (os.path.join('../../dataset/CITYSCAPES/gtFine_trainvaltest/gtFine/train',
+                                 city_name, instance_name))
+        with open(instance) as data_file:
+            label_instance = json.load(data_file)
+            data_file.close()
+
+        # Cacualte all instance
+        objects = label_instance['objects']
+        instance_num = 0
+        mask_instance = []
+        human_pixel_set = []
+        for obj in objects:
+            if obj['label'] == 'person':
+                #print(object['polygon'])
+                polygon = [tuple(poly) for poly in obj['polygon']]
+                img = Image.new('F', (2048, 1024), 0)
+                ImageDraw.Draw(img).polygon(polygon, outline=1, fill=1)
+                img = scipy.misc.imresize(img, 0.25, interp='bilinear', mode=None)
+                mask = np.array(img)
+                mask[np.nonzero(mask > 0)] = 255
+                mask_instance.append(mask)
+
+                human_pixel = np.nonzero(mask == 255)
+                human_pixel_set.append(len(human_pixel[0]))
+                # human_ratio = float(len(human_pixel[0])) / float((img.shape[0] * img.shape[1]))
+                # if human_ratio > alpha:
+                #     mask_instance_sel.append(instance_num)
+                instance_num += 1
+
+        # Sorting (meanwhile maintain original order)
+        human_pixel_index = np.argsort(human_pixel_set)
+        mask_instance_sorted = []
+        for sorted_index in human_pixel_index:
+            mask_instance_sorted.append(mask_instance[sorted_index])
+        print(instance_num)
+        if instance_num > 20:
+            # Select the up to 10 biggest instance
+            instance_num = 20
+
+        # Produce dataset pair [image, heatmap]
+        instance_array = np.arange(instance_num)
+        possible_c = np.arange(instance_num)
+        np.random.shuffle(possible_c)
+        if len(possible_c) > 10:
+            # Cn0 + Cn1 + Cn2 + ... + Cnn-1
+            # Random select up to 10 possible combinations
+            possible_c = possible_c[0:10]
+        for c_idx in possible_c:
+            instance_combine = list(itertools.combinations(instance_array, c_idx))
+            np.random.shuffle(instance_combine)
+            if len(instance_combine) > 4:
+                # Random select up to 4 combinations under one possible combinations. ex:
+                # Cn3: (1, 2, 8), (2, 4, 6), (5, 18, 19), (3, 4, 5)
+                instance_combine = instance_combine[0:4]
+            for i_idx, combine_list in enumerate(instance_combine):
+                img = np.copy(single_view_image)
+                mask = np.zeros((256, 512), dtype=np.uint8)
+                heatmap = np.zeros((256, 512, 3), dtype=np.uint8)
+                heatmap_head = np.zeros((256, 512), dtype=np.float32)
+                for m_idx, m in enumerate(mask_instance_sorted):
+                    if m_idx in combine_list:
+                        mask[np.nonzero(m == 255)] = 1
+                    else:
+                        order_idx = cur + human_pixel_index[m_idx]
+                        pred_idx = order[order_idx]
+
+                        instance = single_view[human_pixel_index[m_idx]]
+                        instance_num, scale = instance['num'], instance['scale']
+                        minx, miny = int(instance['minx'] / 4.0), int(instance['miny'] / 4.0)
+                        heigh, width = instance['heigh'], instance['width']
+                        margin_V, margin_H = instance['margin_V'], instance['margin_H']
+
+
+                        head = np.round(((preds[pred_idx, 9, 0:2] - [margin_H, margin_V]) / (scale * 4.0)) + [minx, miny])
+                        foot_l = np.round(((preds[pred_idx, 0, 0:2] - [margin_H, margin_V]) / (scale * 4.0)) + [minx, miny])
+                        foot_r = np.round(((preds[pred_idx, 5, 0:2] - [margin_H, margin_V]) / (scale * 4.0)) + [minx, miny])
+
+                        pred_height = - head[1] + ((foot_l[1] + foot_r[1]) / 2)
+                        iterations = 1 + (pred_height / 10)
+
+                        #heatmap_head_pred = preds[pred_idx, 9]
+                        #heatmap_head = scipy.misc.imresize(heatmap_head_pred, 4.0, interp='bilinear', mode=None)
+                        #heatmap_head_ori = heatmap_head[margin_V:margin_V + heigh, margin_H:margin_H + width]
+                        #heatmap_head_ori_resize = scipy.misc.imresize(heatmap_head_ori, (1.0 / (scale * 4.0)))
+                        #heigh, width = np.shape(heatmap_head_ori_resize)[0], np.shape(heatmap_head_ori_resize)[1]
+                        #heatmap[miny:miny+heigh, minx:minx+width, 1] += heatmap_head_ori_resize
+
+                        #m = np.dstack((m, m, m))
+                        #yo = np.nonzero(m == 255)
+                        heatmap_head[int(head[1]), (head[0])] = 1
+                        heatmap[np.nonzero(m == 255) + (0,)] = 180
+
+                heatmap_head = scipy.ndimage.morphology.binary_dilation(heatmap_head, iterations=5).astype(heatmap_head.dtype)
+                heatmap_head = gaussian_filter(heatmap_head * 255, sigma=3)
+                heatmap[:, :, 0] = heatmap_head
+
+                #mask = scipy.ndimage.morphology.binary_dilation(mask, iterations=5).astype(mask.dtype)
+                # TODO mask too big and context inpainting color weired
+                # Fixed colore weried, np.float32 will aotuomatically normalized inf 0~1
+                mask = np.dstack((mask, mask, mask))
+                img_instace = img * mask + inpainting * (1 - mask)
+
+                scipy.misc.imsave('/data/vllab1/CVPR/dataset/train/image/{}_{:d}_{:d}.png'.format(
+                    image_name.split('.')[0], c_idx, i_idx), img_instace)
+                scipy.misc.imsave('/data/vllab1/CVPR/dataset/train/heatmap/{}_{:d}_{:d}.png'.format(
+                    image_name.split('.')[0], c_idx, i_idx), heatmap)
+
+        cur += cur_size
+        break
+
+
+def create_dataset_heatmap_pos_mask():
+    dataset_dir = '../../dataset/CITYSCAPES/CITY'
+
+    # Get image name order
+    file_obj = open(os.path.join('', 'order.pkl'), 'r')
+    order = pickle.load(file_obj)
+
+    # Get instance_multi_view_pose
+    file_obj = open(os.path.join('', 'instance_multi_view_pose.pkl'), 'r')
+    instance_multi_view_pose = pickle.load(file_obj)
+    length = len(instance_multi_view_pose)
+
+    # Get pos prediction
+    filename = 'final_preds.h5'
+    f = h5py.File(filename, 'r')
+    preds = f['heatmaps']
+
+    # Parse each view
+    cur = 0
+    for single_view_name_idx, single_view_name in enumerate(sorted(instance_multi_view_pose)):
+        # Count
+        single_view = instance_multi_view_pose[single_view_name]
+        cur_size = len(single_view)
+        print('{:d}/{:d} [{:d}]'.format(single_view_name_idx, length, cur))
+
+        # Get all needed files name
+        image_name = '{}_leftImg8bit.png'.format(single_view_name)
+        inpainting_name = '{}_poisson_leftImg8bit.png'.format(single_view_name)
+        mask_name = '{}_gtFine_labelIds.png'.format(single_view_name)
+        instance_name = '{}_gtFine_polygons.json'.format(single_view_name)
+        city_name = single_view_name.split('_', 1)[0]
+
+        # Get all needed files
+        single_view_image = scipy.misc.imread(os.path.join(dataset_dir, 'fine_image', image_name)).astype(np.float32)
+        mask = scipy.misc.imread(os.path.join(dataset_dir, 'fine_mask', mask_name)).astype(np.float32)
+        inpainting = scipy.misc.imread(os.path.join(
+            '/data/vllab1/Github/streetview_synthesize/Context Encoders_Feature Learning by Inpainting/python_blend', inpainting_name)).astype(np.float32)
+        instance = (os.path.join('../../dataset/CITYSCAPES/gtFine_trainvaltest/gtFine/train',
+                                 city_name, instance_name))
+        with open(instance) as data_file:
+            label_instance = json.load(data_file)
+            data_file.close()
+
+        # Cacualte all instance
+        objects = label_instance['objects']
+        instance_num = 0
+        mask_instance = []
+        human_pixel_set = []
+        for obj in objects:
+            if obj['label'] == 'person':
+                polygon = [tuple(poly) for poly in obj['polygon']]
+                img = Image.new('F', (2048, 1024), 0)
+                ImageDraw.Draw(img).polygon(polygon, outline=1, fill=1)
+                img = scipy.misc.imresize(img, 0.25, interp='bilinear', mode=None)
+                mask = np.array(img)
+                mask[np.nonzero(mask > 0)] = 255
+                mask_instance.append(mask)
+
+                human_pixel = np.nonzero(mask == 255)
+                human_pixel_set.append(len(human_pixel[0]))
+                instance_num += 1
+
+        # Sorting (meanwhile maintain original order)
+        human_pixel_index = np.argsort(human_pixel_set)
+        mask_instance_sorted = []
+        for sorted_index in human_pixel_index:
+            mask_instance_sorted.append(mask_instance[sorted_index])
+        print(instance_num)
+        if instance_num > 20:
+            # Select the up to 10 biggest instance
+            instance_num = 20
+
+        # Produce dataset pair [image, heatmap]
+        instance_array = np.arange(instance_num)
+        possible_c = np.arange(instance_num)
+        np.random.shuffle(possible_c)
+        if len(possible_c) > 10:
+            # Cn0 + Cn1 + Cn2 + ... + Cnn-1
+            # Random select up to 10 possible combinations
+            possible_c = possible_c[0:10]
+        for c_idx in possible_c:
+            instance_combine = list(itertools.combinations(instance_array, c_idx))
+            np.random.shuffle(instance_combine)
+            if len(instance_combine) > 4:
+                # Random select up to 4 combinations under one possible combinations. ex:
+                # Cn3: (1, 2, 8), (2, 4, 6), (5, 18, 19), (3, 4, 5)
+                instance_combine = instance_combine[0:4]
+            for i_idx, combine_list in enumerate(instance_combine):
+                img = np.copy(single_view_image)
+                mask = np.zeros((256, 512), dtype=np.float32)
+                heatmap = np.zeros((256, 512, 3), dtype=np.float32)
+                heatmap_head = np.zeros((256, 512), dtype=np.float32)
+                for m_idx, m in enumerate(mask_instance_sorted):
+                    if m_idx in combine_list:
+                        mask[np.nonzero(m == 255)] = 1
+                    else:
+                        # Get index
+                        order_idx = cur + human_pixel_index[m_idx]
+                        pred_idx = order[order_idx]
+                        # Get instance
+                        instance = single_view[human_pixel_index[m_idx]]
+                        instance_num, scale = instance['num'], instance['scale']
+                        minx, miny = int(instance['minx'] / 4.0), int(instance['miny'] / 4.0)
+                        heigh, width = instance['heigh'], instance['width']
+                        margin_V, margin_H = instance['margin_V'], instance['margin_H']
+                        instance_mask = scipy.misc.imread(
+                            os.path.join('/data/vllab1/CVPR/datasetPed/cityscape_train/mask', '{}_{}.png'.format(single_view_name, instance_num)))
+                        instance_mask = scipy.misc.imresize(instance_mask, 0.25)
+                        heigh_ori, width_ori = np.shape(instance_mask)[0], np.shape(instance_mask)[1]
+
+                        # Get prediction heatmap
+                        heatmap_head_pred = preds[pred_idx, 9]
+                        heatmap_max = np.max(heatmap_head_pred)
+                        heatmap_head_pred[np.nonzero(heatmap_head_pred) < 0] = 0
+                        heatmap_head_pred = heatmap_head_pred / 255.0 * heatmap_max
+
+                        heatmap_head = scipy.misc.imresize(heatmap_head_pred, 4.0, interp='bilinear', mode=None)
+                        heatmap_bilinear_max = float(np.max(heatmap_head))
+                        heatmap_head_ori = heatmap_head[margin_V:margin_V + heigh, margin_H:margin_H + width]
+                        heatmap_head_ori_resize = scipy.misc.imresize(heatmap_head_ori, (heigh_ori, width_ori))
+                        # Crop and restore mask
+                        heatmap_head_ori_resize *= (instance_mask / 255)
+                        heatmap_head_ori_resize = (heatmap_head_ori_resize / 255.0) * 1
+
+                        #heigh, width = np.shape(heatmap_head_ori_resize)[0], np.shape(heatmap_head_ori_resize)[1]
+
+                        heatmap[miny:miny + heigh_ori, minx:minx + width_ori, 1] += heatmap_head_ori_resize
+                        heatmap[np.nonzero(m == 255) + (0,)] = 1
+
+                heatmap *= 255
+                heatmap[np.nonzero(heatmap > 255)] = 255
+
+                mask = np.dstack((mask, mask, mask))
+                img_instace = img * mask + inpainting * (1 - mask)
+
+                scipy.misc.imsave('/data/vllab1/CVPR/dataset/train/image/{}_{:d}_{:d}.png'.format(
+                    image_name.split('.')[0], c_idx, i_idx), img_instace)
+                scipy.misc.imsave('/data/vllab1/CVPR/dataset/train/heatmap/{}_{:d}_{:d}.png'.format(
+                    image_name.split('.')[0], c_idx, i_idx), heatmap)
+
+        cur += cur_size
+        break
+
+
+def move_and_resize_dataset():
+    data = glob(os.path.join('/data/vllab1/CVPR/dataset/copy/test/image', "*.png"))
+
+    for index, filePath in enumerate(data):
+        print ('%d/%d' % (index, len(data)))
+        img = scipy.misc.imread(filePath).astype(np.uint8)
+        img = scipy.misc.imresize(img, 0.5, interp='bilinear', mode=None)
+        scipy.misc.imsave('/data/vllab1/CVPR/dataset/test/image/' + filePath.split('/')[-1], img.astype(np.uint8))
+        #break
+
+
+def search_datasetPed():
+
+    file_obj = open(os.path.join('/data/vllab1/CVPR/datasetPed/cityscape_train', 'PedMeta.pkl'), 'r')
+    PedMeta = pickle.load(file_obj)
+
+
+def heatmap_suppression():
+    dir = '/data/vllab1/Github/streetview_synthesize/FCN/test_visual'
+    data = glob(os.path.join(dir, "*_pred.png"))
+    data_len = len(data)
+
+    for img_idx, img_name in enumerate(data):
+        name = img_name.split('/')[-1].split('.')[0]
+        name = name +'.png'
+        print('{:d}/{:d} {}'.format(img_idx, data_len, name))
+        pred = scipy.misc.imresize(scipy.misc.imread(img_name), 2.0).astype(np.float32)
+        image = scipy.misc.imread(os.path.join('/data/vllab1/CVPR/dataset/copy/test/image', name)).astype(np.float32)
+
+        thre = 1
+        head = np.copy(pred[:, :, 0])
+        #head = gaussian_filter(head, sigma=1)
+        head[np.nonzero[head] < thre] = 0
+        map_aug = np.zeros((256 + 2, 512 + 2))
+        map_aug1 = np.zeros((256 + 2, 512 + 2))
+        map_aug2 = np.zeros((256 + 2, 512 + 2))
+        map_aug3 = np.zeros((256 + 2, 512 + 2))
+        map_aug4 = np.zeros((256 + 2, 512 + 2))
+
+        map_aug[1:-1, 1:-1] = head
+        map_aug1[1:-1, 0:-2] = head
+        map_aug2[1:-1, 2:] = head
+        map_aug3[0:-2, 1:-1] = head
+        map_aug4[2:, 1:-1] = head
+
+        peakMap = (map_aug < map_aug1) & (map_aug > map_aug2) & (map_aug > map_aug3) & (map_aug > map_aug4)
+        peakMap = peakMap[1:-1, 1:-1]
+
+
+
+        peakMap = scipy.ndimage.morphology.binary_dilation(peakMap, iterations=1).astype(peakMap.dtype)
+        head_idx = np.nonzero(peakMap)
+        #[X, Y] = find(peakMap);
+
+        #feet = np.copy(pred[:, :, 2])
+        #head_idx = np.nonzero(head>1)
+
+        visual = np.copy(image)
+        visual[head_idx + (0,)] = 255
+        visual[head_idx + (1,)] = 255
+        visual[head_idx + (2,)] = 255
+
+        visual[:, :, 0] += pred[:, :, 0] * 100
+        visual[np.nonzero(visual>255)] = 255
+
+
+        scipy.misc.imsave(os.path.join('/data/vllab1/CVPR/demo/heatmap_suppression', name), visual.astype(np.uint8))
+
+        if img_idx > 10:
+            break
+
+
+def find_peak(heatmap, thre=1):
+    heatmap[np.nonzero(heatmap < thre)] = 0
+    height, width = np.shape(heatmap)[0], np.shape(heatmap)[1]
+    map_aug = np.zeros((height + 2, width + 2))
+    map_aug1 = np.zeros((height + 2, width + 2))
+    map_aug2 = np.zeros((height + 2, width + 2))
+    map_aug3 = np.zeros((height + 2, width + 2))
+    map_aug4 = np.zeros((height + 2, width + 2))
+
+    map_aug[1:-1, 1:-1] = heatmap
+    map_aug1[1:-1, 0:-2] = heatmap
+    map_aug2[1:-1, 2:] = heatmap
+    map_aug3[0:-2, 1:-1] = heatmap
+    map_aug4[2:, 1:-1] = heatmap
+
+    peakMap = (map_aug < map_aug1) & (map_aug > map_aug2) & (map_aug > map_aug3) & (map_aug > map_aug4)
+    peakMap = peakMap[1:-1, 1:-1]
+    peakMap_idx = np.nonzero(peakMap)
+    peakMap_idx = np.array(zip(*peakMap_idx))
+    if len(peakMap_idx) == 0:
+        return peakMap_idx
+
+    deleIdx = []
+    flag = np.ones((len(peakMap_idx)))
+    for i in range(0, len(peakMap_idx)):
+        if flag[i] > 0:
+            for j in range(i+1, len(peakMap_idx)):
+                v = peakMap_idx[i] - peakMap_idx[j]
+                if np.linalg.norm(v) <= 10:
+                    flag[j] = 0
+                    deleIdx.append(j)
+
+    peakMap_idx_y = np.delete(peakMap_idx[:, 0], deleIdx)
+    peakMap_idx_x = np.delete(peakMap_idx[:, 1], deleIdx)
+    peakMap_idx = zip(peakMap_idx_y, peakMap_idx_x)
+    return peakMap_idx
+
+
+def simpleblend(img_target, img_source, img_mask, offset=(0, 0)):
+    # compute regions to be blended
+    region_source = (
+            max(-offset[0], 0),
+            max(-offset[1], 0),
+            min(img_target.shape[0]-offset[0], img_source.shape[0]),
+            min(img_target.shape[1]-offset[1], img_source.shape[1]))
+    region_target = (
+            max(offset[0], 0),
+            max(offset[1], 0),
+            min(img_target.shape[0], img_source.shape[0]+offset[0]),
+            min(img_target.shape[1], img_source.shape[1]+offset[1]))
+    region_size = (region_source[2]-region_source[0], region_source[3]-region_source[1])
+
+    img_mask = gaussian_filter(img_mask, sigma=1)
+    img_mask = img_mask[region_source[0]:region_source[2], region_source[1]:region_source[3]]
+    img_mask3 = np.dstack((img_mask, img_mask, img_mask))
+
+    img_source = img_source[region_source[0]:region_source[2], region_source[1]:region_source[3]]
+
+    img_target_region = img_target[region_target[0]:region_target[2], region_target[1]:region_target[3]]
+    img_target[region_target[0]:region_target[2], region_target[1]:region_target[3]] = img_source * img_mask3 + \
+                                                                                       img_target_region * (1. - img_mask3)
+
+    return img_target
+
+
+def synthesize_with_pedcut(do_poisson=False):
+    ped_dir = '/data/vllab1/dataset/pedestrian/Ped'
+
+    file_name = os.path.join(ped_dir, 'pedestrian_list.pkl')
+    file_obj = open(file_name, 'r')
+    ped_file_name = pickle.load(file_obj)
+
+    dir = '/data/vllab1/Github/streetview_synthesize/FCN/test_visual'
+    data = glob(os.path.join(dir, "*_pred.png"))
+    data_len = len(data)
+
+    for img_idx, img_name in enumerate(data):
+        name = img_name.split('/')[-1].split('.')[0]
+        name = name +'.png'
+        print('{:d}/{:d} {}'.format(img_idx, data_len, name))
+        pred = scipy.misc.imresize(scipy.misc.imread(img_name), 2.0).astype(np.float32)
+        image = scipy.misc.imread(os.path.join('/data/vllab1/CVPR/dataset/copy/test/image', name)).astype(np.float32)
+        visual = np.copy(image)
+
+        # Surpression
+        thre = 1
+        peakMap_idx_head = find_peak(pred[:, :, 0], thre)
+        peakMap_idx_body = find_peak(pred[:, :, 1], thre)
+        peakMap_idx_foot = find_peak(pred[:, :, 2], thre)
+
+        #if len(peakMap_idx_head) == 0 or len(peakMap_idx_body) == 0 or len(peakMap_idx_foot) == 0:
+        #    continue
+        # Candidate Position
+        peakMap_idx = peakMap_idx_head
+
+        # Search most likely
+        for idx in peakMap_idx:
+            # Search most likely
+            ped_sel_idx = np.random.randint(785)
+            ped_name, ped_height, ped_width, ped_aspect = ped_file_name[ped_sel_idx].name, ped_file_name[
+                ped_sel_idx].height, ped_file_name[ped_sel_idx].width, ped_file_name[ped_sel_idx].aspect
+            ped_image = scipy.misc.imread(os.path.join(ped_dir, 'image', ped_name)).astype(np.float32)
+            ped_mask = scipy.misc.imread(os.path.join(ped_dir, 'mask', ped_name)).astype(np.float32) / 255.
+
+            # Blending
+            if do_poisson:
+                ped_mask = scipy.ndimage.morphology.binary_dilation(ped_mask, iterations=5).astype(ped_mask.dtype)
+                ped_mask[:, 0] = 0
+                ped_mask[:, -1] = 0
+                ped_mask[0, :] = 0
+                ped_mask[-1, :] = 0
+                # visual = poissonblending.blend(visual, ped_image, ped_mask, offset=(0, 0))
+                visual = poissonblending.blend(visual, ped_image, ped_mask, idx)
+            else:
+                yo = idx - np.array([ped_height/2., ped_width/2.])
+                visual = simpleblend(visual, ped_image, ped_mask, idx )
+
+        scipy.misc.imsave(os.path.join('/data/vllab1/CVPR/demo/synthesize_pedcut_body', name), visual.astype(np.uint8))
+
+        #if img_idx > 10:
+        #    break
+
+
+def synthesize_with_pedcut_segment(do_poisson=False):
+    ped_dir = '/data/vllab1/dataset/pedestrian/Ped'
+
+    file_name = os.path.join(ped_dir, 'pedestrian_list.pkl')
+    file_obj = open(file_name, 'r')
+    ped_file_name = pickle.load(file_obj)
+
+    dir = '/data/vllab1/Github/streetview_synthesize/FCN/test_visual'
+    data = glob(os.path.join(dir, "*_pred.png"))
+    data_len = len(data)
+
+    # pedestrian image, mask, list
+    ped_single_dir = '/data/vllab1/dataset/pedestrian/CITYSCAPES_new/image'
+    mask_single_dir = '/data/vllab1/dataset/pedestrian/CITYSCAPES_new/mask'
+    dataset_dir = '/data/vllab1/dataset/pedestrian/CITYSCAPES_new'
+    file_name = os.path.join(dataset_dir, 'pedestrian_list.pkl')
+    file_obj = open(file_name, 'r')
+    pedestrian_list = pickle.load(file_obj)
+    # pedestrian_multi image, mask, list
+    ped_mul_dir = '/data/vllab1/dataset/pedestrian/CITYSCAPES_multiple/image'
+    mask_mul_dir = '/data/vllab1/dataset/pedestrian/CITYSCAPES_multiple/mask'
+    dataset_dir = '/data/vllab1/dataset/pedestrian/CITYSCAPES_multiple'
+    file_name = os.path.join(dataset_dir, 'pedestrian_list.pkl')
+    file_obj = open(file_name, 'r')
+    pedestrian_multi_list = pickle.load(file_obj)
+
+    # parameter
+    sig, threshold = 1, 1
+    print(sig, threshold)
+    for img_idx, img_name in enumerate(data):
+        name = img_name.split('/')[-1].split('.')[0]
+        name = name +'.png'
+        print('{:d}/{:d} {}'.format(img_idx, data_len, name))
+        pred = scipy.misc.imresize(scipy.misc.imread(img_name), 2.0).astype(np.float32)
+        image = scipy.misc.imread(os.path.join('/data/vllab1/CVPR/dataset/copy/test/image', name)).astype(np.float32)
+        visual = np.copy(image)
+
+        # Segment heatmap
+        blurred = gaussian_filter(pred[:, :, 1], sigma=sig)
+        blurred[np.nonzero(blurred >= threshold)] = 255
+        blurred[np.nonzero(blurred < threshold)] = 0
+        # Visual segment heatmap
+        blurred_index = np.nonzero(blurred == 255)
+        image_v = np.copy(image)
+        image_v[blurred_index + (0,)] += 80
+        image_v[blurred_index + (1,)] += 80
+        image_v[blurred_index + (2,)] += 80
+        image_v[np.nonzero(image_v > 255)] = 255
+
+        # Use segment heatmap seythesis image
+        all_labels = skimage.measure.label(blurred, background=0)
+        for label in range(1, all_labels.max()+1):
+            human_pixel = np.nonzero(all_labels == label)
+            miny, maxy, minx, maxx = min(human_pixel[0]), max(human_pixel[0]), min(human_pixel[1]), max(human_pixel[1])
+            height, width = maxy - miny, maxx - minx
+            # invalid region
+            if height < 20 or width < 15:
+                continue
+            aspect = float(width) / float(height)
+            if aspect > 0.7:
+                image_v[human_pixel + (1,)] = 255
+                pedestrian_fit_all = pedestrian_multi_list
+                ped_dir = ped_mul_dir
+                mask_dir = mask_mul_dir
+                heat_alpha = 1
+            else:
+                image_v[human_pixel + (2,)] = 255
+                pedestrian_fit_all = pedestrian_list
+                ped_dir = ped_single_dir
+                mask_dir = mask_single_dir
+                heat_alpha = 255
+            # Blending
+            '''
+            if do_poisson:
+                ped_mask = scipy.ndimage.morphology.binary_dilation(ped_mask, iterations=5).astype(ped_mask.dtype)
+                ped_mask[:, 0] = 0
+                ped_mask[:, -1] = 0
+                ped_mask[0, :] = 0
+                ped_mask[-1, :] = 0
+                # visual = poissonblending.blend(visual, ped_image, ped_mask, offset=(0, 0))
+                visual = poissonblending.blend(visual, ped_image, ped_mask, idx)
+            else:
+                yo = idx - np.array([ped_height/2., ped_width/2.])
+                visual = simpleblend(visual, ped_image, ped_mask, idx )
+            '''
+            ceny, cenx = np.round(np.mean(human_pixel[0])), np.round(np.mean(human_pixel[1]))
+            pedestrian_fit_all.sort(key=lambda x: abs(x.width-width) + abs(x.height-height))
+            #random_sel = np.random.randint(0, len(pedestrian_fit_all))
+
+            sel_ped_name, ped_width, ped_height = pedestrian_fit_all[0].name, pedestrian_fit_all[0].width, pedestrian_fit_all[0].height
+            sel_ped_image = scipy.misc.imread(os.path.join(ped_dir, sel_ped_name)).astype(np.float32)
+            sel_ped_mask = scipy.misc.imread(os.path.join(mask_dir, sel_ped_name)).astype(np.float32)/heat_alpha
+            sel_ped_mask = np.dstack((sel_ped_mask, sel_ped_mask, sel_ped_mask))
+            sel_ped_image *= sel_ped_mask
+
+
+            #road_pixel = np.nonzero(semantic == 7)
+            #sidewalk_pixel = np.nonzero(semantic == 8)
+            #parking_pixel = np.nonzero(semantic == 9)
+            #rail_pixel = np.nonzero(semantic == 10)
+            #possible_random = np.hstack((road_pixel, sidewalk_pixel, parking_pixel, rail_pixel))
+            #ramdom_sel = np.random.randint(0, len(possible_random[0]))
+            #ceny, cenx = possible_random[0][ramdom_sel] / 4, possible_random[1][ramdom_sel] / 4
+            #ceny -= ped_height/2
+
+
+            ped_width, ped_height =  int(ped_width), int(ped_height)
+            cut_upy, cut_dny, cut_lx, cut_rx = 0, 0, 0, 0
+            lx = int(np.round(cenx - ped_width / 2))
+            if lx < 0:
+                cut_lx = -lx
+                lx = 0
+
+            upy = int(np.round(ceny - ped_height/2))
+            if upy < 0:
+                cut_upy = -upy
+                upy = 0
+
+            rx = lx + ped_width - cut_lx
+            if rx > 512-1:
+                cut_rx = rx - (512-1)
+                rx = 512-1
+
+            dny = upy + ped_height - cut_upy
+            if dny > 256-1:
+                cut_dny = dny - (256-1)
+                dny = 256-1
+
+            hole = (1-sel_ped_mask)[cut_upy:ped_height-cut_dny, cut_lx:ped_width-cut_rx, :] * visual[upy:dny, lx:rx, :]
+            fill = hole + sel_ped_image[cut_upy:ped_height-cut_dny, cut_lx:ped_width-cut_rx, :]
+            visual[upy:dny, lx:rx, :] = fill
+
+        scipy.misc.imsave(os.path.join('/data/vllab1/CVPR/demo/synthesize_city_fit', name), visual.astype(np.uint8))
+
+        #if img_idx > 10:
+        #    break
+
+
+
+def CVPR_instance_visual():
+    dir = '/data/vllab1/CVPR/dataset/copy/train/image'
+    data = glob(os.path.join(dir, "strasbourg_000000_030706*.png"))
+    data_len = len(data)
+
+    for img_idx, img_name in enumerate(data):
+        name = img_name.split('/')[-1]
+        print('{:d}/{:d} {}'.format(img_idx, data_len, name))
+        img = scipy.misc.imread(img_name).astype(np.float32)
+        heatmap = scipy.misc.imread(os.path.join('/data/vllab1/CVPR/dataset/copy/train/heatmap', name)).astype(np.float32)
+
+        visual = np.copy(img)
+        visual = img + heatmap * 0.3
+        #visual[np.nonzero(visual > 255)] = 255
+
+        #body = np.copy(heatmap[:, :, 1])
+        #body_idx = np.nonzero(body == 255)
+        #visual[body_idx + (0,)] += 100
+        #visual[body_idx + (1,)] += 100
+        #visual[body_idx + (2,)] += 100
+
+        #visual[:, :, 0] += heatmap[:, :, 0] * 0.6
+        #visual[:, :, 2] += heatmap[:, :, 2] * 0.6
+        visual[np.nonzero(visual>255)] = 255
+
+
+
+        scipy.misc.imsave(os.path.join('/data/vllab1/CVPR/demo/dataset_visual', name), visual.astype(np.uint8))
+
+        #break
+
+
+def CVPR_FCN_enhance():
+    dir = '/data/vllab1/Github/streetview_synthesize/FCN/test_visual_use_valid'
+    data = glob(os.path.join(dir, "frankfurt_000000_009561_leftImg8bit.png_pred.png"))
+    data_len = len(data)
+
+    for img_idx, img_name in enumerate(data):
+        name = img_name.split('/')[-1].split('.')[0]
+        name = name +'.png'
+        print('{:d}/{:d} {}'.format(img_idx, data_len, name))
+        pred = scipy.misc.imresize(scipy.misc.imread(img_name), 2.0).astype(np.float32)
+        #image = scipy.misc.imread(os.path.join('/data/vllab1/CVPR/dataset/copy/valid/image', name)).astype(np.float32)
+        image = scipy.misc.imread(os.path.join('/data/vllab1/dataset/CITYSCAPES/CITY_valid/fine_image', name)).astype(np.float32)
+
+        #pred_visual = np.copy(pred)
+        #pred_visual *= 2
+        #pred_visual = gaussian_filter(pred_visual, sigma=3)
+        #pred_visual[np.nonzero(pred_visual > 255)] = 255
+
+
+        visual = np.copy(image)
+        visual = image + pred * 100
+        visual[np.nonzero(visual>255)] = 255
+
+
+        scipy.misc.imsave(os.path.join('/data/vllab1/CVPR/demo/FCN_enhance_valid', name), visual.astype(np.uint8))
+
+        if img_idx > 10:
+            break
+
+
+def CVPR_syn():
+
+    dir = '/data/vllab1/CVPR/demo/synthesize_city_fit'
+    data = sorted(glob(os.path.join(dir, "*.png")))
+    data_len = len(data)
+
+    dir = '/data/vllab1/CVPR/demo/FCN_enhance'
+    data2 = sorted(glob(os.path.join(dir, "*.png")))
+
+    for img_idx, img_name in enumerate(data):
+        name = img_name.split('/')[-1].split('.')[0]
+        name = name +'.png'
+        print('{:d}/{:d} {}'.format(img_idx, data_len, name))
+        img = scipy.misc.imread(img_name).astype(np.float32)
+        pred = scipy.misc.imread(data2[img_idx]).astype(np.float32)
+
+        combine = np.zeros((256, 512*2, 3))
+        combine[:, 0:512, :] = img
+        combine[:, 512:, :] = pred
+
+
+        scipy.misc.imsave(os.path.join('/data/vllab1/CVPR/demo/syn_visual', name), combine.astype(np.uint8))
+
+        #if img_idx > 10:
+        #    break
+
+if __name__ == '__main__':
+    wrong_similiar_random()
+

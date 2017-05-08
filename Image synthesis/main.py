@@ -29,13 +29,13 @@ tf.flags.DEFINE_string("test_dir", "./test/", "Directory name to the test")
 tf.flags.DEFINE_string("vgg_dir", "../../checkpoint/", "Path to vgg model mat")
 tf.flags.DEFINE_string("model_dir", "../../checkpoint/image synthesis/relative_combine", "path to model directory")
 
-tf.flags.DEFINE_integer("batch_size", 9, "batch size for training")
-tf.flags.DEFINE_integer("sample_shape", 3, "The size of sample images [1]")
+tf.flags.DEFINE_integer("batch_size", 1, "batch size for training")
+tf.flags.DEFINE_integer("sample_shape", 1, "The size of sample images [1]")
 
 tf.flags.DEFINE_float("learning_rate", "1e-4", "Learning rate for Adam Optimizer")
 tf.flags.DEFINE_float("beta1", "0.5", "Momentum term of adam [0.5]")
 tf.flags.DEFINE_bool('debug', "False", "Debug mode: True/ False")
-tf.flags.DEFINE_string('mode', "train", "Mode train/ test/ valid/ visualize")
+tf.flags.DEFINE_string('mode', "test", "Mode train/ test/ valid/ visualize")
 
 MAX_ITERATION = int(2e4 + 1)
 NUM_OF_CLASSESS = 2

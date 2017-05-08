@@ -3,7 +3,7 @@ from glob import glob
 import scipy
 from model import *
 from util import *
-
+import poissonblending
 n_epochs = 10000
 weight_decay_rate = 0.00001
 momentum = 0.9
@@ -11,12 +11,12 @@ lambda_recon = 0.9
 lambda_adv = 0.1
 
 FLAGS = tf.flags.FLAGS
-tf.flags.DEFINE_string("data_dir", "../../../dataset/CITYSCAPES/CITY/", "path to dataset")
+tf.flags.DEFINE_string("data_dir", "/data/vllab1/dataset/CITYSCAPES/CITY", "path to dataset")
 tf.flags.DEFINE_string("name_dir", "../../../dataset/CITYSCAPES/CITY/extended_human_wo.pkl", "path to name")
 tf.flags.DEFINE_string("human_dir", "../../../dataset/CITYSCAPES/CITY/human_w.pkl", "path to test name")
-tf.flags.DEFINE_string("model_dir", "../../../checkpoint/context inpainting/inpainting_D/", "path to model directory")
-tf.flags.DEFINE_string("result_dir", "./logs_inpainting_D/", "path to result directory")
-tf.flags.DEFINE_string("test_dir", "./test_inpainting_D/", "path to result directory")
+tf.flags.DEFINE_string("model_dir", "../../../checkpoint/context inpainting/inpainting_CVPR/", "path to model directory")
+tf.flags.DEFINE_string("result_dir", "./logs_inpainting_CVPR/", "path to result directory")
+tf.flags.DEFINE_string("test_dir", "./test_inpainting_CVPR/", "path to result directory")
 
 tf.flags.DEFINE_integer("batch_size", "1", "batch size for training")
 tf.flags.DEFINE_integer("sample_shape", "1", "for sample merge")
@@ -25,7 +25,7 @@ tf.flags.DEFINE_integer("image_size_w", "512", "width of the image")
 
 tf.flags.DEFINE_float("learning_rate", "3e-4", "Learning rate for Adam Optimizer")
 tf.flags.DEFINE_bool('debug', "False", "Debug mode: True/ False")
-tf.flags.DEFINE_string('mode', "test", "Mode train/ test/ visualize")
+tf.flags.DEFINE_string('mode', "train", "Mode train/ test/ out")
 
 
 is_train = tf.placeholder(tf.bool)
@@ -46,7 +46,7 @@ loss_recon_ori = tf.square(tf.subtract(images_tf, reconstruction))
 #loss_recon = tf.reduce_mean(tf.reduce_sum(loss_recon_ori, [1, 2, 3]))
 loss_recon_hole = tf.reduce_mean(tf.reduce_sum(tf.multiply(mask_recon, loss_recon_ori), [1, 2, 3]))
 loss_recon_overlap = tf.reduce_mean(tf.reduce_sum(tf.multiply(mask_overlap, loss_recon_ori), [1, 2, 3]))
-loss_recon = tf.add(loss_recon_hole, loss_recon_overlap * 10)
+loss_recon = tf.add(loss_recon_hole / 10, loss_recon_overlap)
 
 # TODO check adv loss
 adversarial_pos = model.build_adversarial(images_tf, is_train)
@@ -56,10 +56,10 @@ adversarial_neg = model.build_adversarial(reconstruction, is_train, reuse=True)
 #labels_G = tf.ones([FLAGS.batch_size])
 #loss_adv_D = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(adversarial_all, labels_D))
 #loss_adv_G = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(adversarial_neg, labels_G))
-loss_adv_D_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(adversarial_pos, tf.ones([FLAGS.batch_size])))
-loss_adv_D_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(adversarial_neg, tf.zeros([FLAGS.batch_size])))
+loss_adv_D_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=adversarial_pos, labels=tf.ones([FLAGS.batch_size])))
+loss_adv_D_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=adversarial_neg, labels=tf.zeros([FLAGS.batch_size])))
 loss_adv_D = loss_adv_D_real + loss_adv_D_fake
-loss_adv_G = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(adversarial_neg, tf.ones([FLAGS.batch_size])))
+loss_adv_G = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=adversarial_neg, labels=tf.ones([FLAGS.batch_size])))
 
 # TODO vae and adv ration
 loss_G = loss_adv_G * lambda_adv + loss_recon * lambda_recon
@@ -69,8 +69,8 @@ var_G = filter(lambda x: x.name.startswith('GEN'), tf.trainable_variables())
 var_D = filter(lambda x: x.name.startswith('DIS'), tf.trainable_variables())
 W_G = filter(lambda x: x.name.endswith('W:0'), var_G)
 W_D = filter(lambda x: x.name.endswith('W:0'), var_D)
-loss_G += weight_decay_rate * tf.reduce_mean(tf.pack(map(lambda x: tf.nn.l2_loss(x), W_G)))
-loss_D += weight_decay_rate * tf.reduce_mean(tf.pack(map(lambda x: tf.nn.l2_loss(x), W_D)))
+loss_G += weight_decay_rate * tf.reduce_mean(tf.stack(map(lambda x: tf.nn.l2_loss(x), W_G)))
+loss_D += weight_decay_rate * tf.reduce_mean(tf.stack(map(lambda x: tf.nn.l2_loss(x), W_D)))
 
 
 # TODO check gradients
@@ -137,7 +137,6 @@ if FLAGS.mode == 'train':
                         learning_rate: FLAGS.learning_rate,
                         is_train: True
                         })
-
             # TODO check adv ration
             if iters % 1 == 0:
                 _, loss_D_val, adv_pos_val, adv_neg_val, loss_adv_D_val = sess.run(
@@ -196,7 +195,7 @@ elif FLAGS.mode == 'test':
     file_name = pickle.load(file_obj)
     train_size = len(file_name)
 
-    np.random.shuffle(file_name)
+    #np.random.shuffle(file_name)
 
     for batch_itr in range(0, train_size / FLAGS.batch_size):
         print('[{:d}/{:d}]'.format(batch_itr, train_size / FLAGS.batch_size))
@@ -223,21 +222,89 @@ elif FLAGS.mode == 'test':
                 is_train: False
             })
 
-        samples = (255. * (sample_images + 1) / 2.).astype(int)
-        samples_hole = (255. * (sample_images_hole + 1) / 2.).astype(int)
-        reconstruction_vals_ori = (255. * (reconstruction_vals + 1) / 2.).astype(int)
+        samples = (255. * (sample_images + 1) / 2.).astype(np.uint8)
+        samples_hole = (255. * (sample_images_hole + 1) / 2.).astype(np.uint8)
+        reconstruction_vals_ori = (255. * (reconstruction_vals + 1) / 2.).astype(np.uint8)
         reconstruction_vals = sample_masks * reconstruction_vals_ori + (1 - sample_masks) * samples
 
+        reconstruction_vals_poisson = poissonblending.blend_same(
+            merge(samples, (FLAGS.sample_shape, FLAGS.sample_shape)),
+            merge(reconstruction_vals_ori, (FLAGS.sample_shape, FLAGS.sample_shape)),
+            merge(sample_masks[:, :, :, 0], (FLAGS.sample_shape, FLAGS.sample_shape), is_gray=True))
+
         scipy.misc.imsave(os.path.join(FLAGS.test_dir, '{:d}_ori.png'.format(batch_itr))
-                          , merge(samples, (FLAGS.sample_shape, FLAGS.sample_shape)))
+                          , merge(samples, (FLAGS.sample_shape, FLAGS.sample_shape)).astype(np.uint8))
         scipy.misc.imsave(os.path.join(FLAGS.test_dir, '{:d}_rec_ori.png'.format(batch_itr))
-                          , merge(reconstruction_vals_ori, (FLAGS.sample_shape, FLAGS.sample_shape)))
+                          , merge(reconstruction_vals_ori, (FLAGS.sample_shape, FLAGS.sample_shape)).astype(np.uint8))
         scipy.misc.imsave(os.path.join(FLAGS.test_dir, '{:d}_rec.png'.format(batch_itr))
-                          , merge(reconstruction_vals, (FLAGS.sample_shape, FLAGS.sample_shape)))
+                          , merge(reconstruction_vals, (FLAGS.sample_shape, FLAGS.sample_shape)).astype(np.uint8))
         scipy.misc.imsave(os.path.join('./out', '{}_leftImg8bit.png'.format(name))
                           , merge(reconstruction_vals, (FLAGS.sample_shape, FLAGS.sample_shape)).astype(np.uint8))
+        scipy.misc.imsave(os.path.join('./out_blend', '{}_leftImg8bit_poissopn.png'.format(name))
+                          , reconstruction_vals_poisson.astype(np.uint8))
+        #break
+
+elif FLAGS.mode == 'valid':
+    file_obj = open(os.path.join(FLAGS.data_dir, 'human_w.pkl'), 'r')
+    file_name = pickle.load(file_obj)
+    train_size = len(file_name)
+
+    #np.random.shuffle(file_name)
+
+    for batch_itr in range(0, train_size / FLAGS.batch_size):
+        print('[{:d}/{:d}]'.format(batch_itr, train_size / FLAGS.batch_size))
+
+        sample_images_name = file_name[batch_itr * FLAGS.batch_size:(batch_itr + 1) * FLAGS.batch_size]
+        sample_images = np.array([scipy.misc.imread(
+            os.path.join(FLAGS.data_dir, 'fine_image', '{}_leftImg8bit.png'.format(name))).astype(np.float32)
+                                  for name in sample_images_name])
+        sample_images = np.array(sample_images) / 255 * 2 - 1
+
+        sample_masks = np.array([read_mask(
+            os.path.join(FLAGS.data_dir, 'fine_mask', '{}_gtFine_labelIds.png'.format(name))).astype(np.float32)
+                                 for name in sample_images_name])
+
+        sample_images_hole = (1 - sample_masks) * sample_images
+
+        # TODO figure out what's going on hereQQ
+        saver.restore(sess, ckpt.model_checkpoint_path)
+        print("Model restored...{}".format(ckpt.model_checkpoint_path))
+        reconstruction_vals = sess.run(
+            reconstruction,
+            feed_dict={
+                images_hole: sample_images_hole,
+                is_train: False
+            })
+
+        samples = (255. * (sample_images + 1) / 2.).astype(np.uint8)
+        samples_hole = (255. * (sample_images_hole + 1) / 2.).astype(np.uint8)
+        reconstruction_vals_ori = (255. * (reconstruction_vals + 1) / 2.).astype(np.uint8)
+        reconstruction_vals = sample_masks * reconstruction_vals_ori + (1 - sample_masks) * samples
+
+        poisson_mask = merge(sample_masks[:, :, :, 0], (FLAGS.sample_shape, FLAGS.sample_shape), is_gray=True)
+        poisson_mask[:, 0] = 0
+        poisson_mask[:, 511] = 0
+        poisson_mask[0, :] = 0
+        poisson_mask[255, :] = 0
+        reconstruction_vals_poisson = poissonblending.blend_same(
+            merge(samples, (FLAGS.sample_shape, FLAGS.sample_shape)),
+            merge(reconstruction_vals_ori, (FLAGS.sample_shape, FLAGS.sample_shape)),
+            poisson_mask)
+
+        scipy.misc.imsave(os.path.join(FLAGS.test_dir, '{:d}_ori.png'.format(batch_itr))
+                          , merge(samples, (FLAGS.sample_shape, FLAGS.sample_shape)).astype(np.uint8))
+        scipy.misc.imsave(os.path.join(FLAGS.test_dir, '{:d}_rec_ori.png'.format(batch_itr))
+                          , merge(reconstruction_vals_ori, (FLAGS.sample_shape, FLAGS.sample_shape)).astype(np.uint8))
+        scipy.misc.imsave(os.path.join(FLAGS.test_dir, '{:d}_rec.png'.format(batch_itr))
+                          , merge(reconstruction_vals, (FLAGS.sample_shape, FLAGS.sample_shape)).astype(np.uint8))
+        scipy.misc.imsave(os.path.join('./out', '{}_leftImg8bit.png'.format(name))
+                          , merge(reconstruction_vals, (FLAGS.sample_shape, FLAGS.sample_shape)).astype(np.uint8))
+        scipy.misc.imsave(os.path.join('./out_blend', '{}_leftImg8bit_poissopn.png'.format(name))
+                          , reconstruction_vals_poisson.astype(np.uint8))
+        #break
 
 elif FLAGS.mode == 'out':
+    # TODO can't fix some bug so use FLAGS.mode 'test'
     file_obj = open(FLAGS.human_dir, 'r')
     file_name = pickle.load(file_obj)
     data_size = len(file_name)
@@ -264,7 +331,7 @@ elif FLAGS.mode == 'out':
         samples = (255. * (sample_images + 1) / 2.).astype(int)
         samples_hole = (255. * (sample_images_hole + 1) / 2.).astype(int)
         reconstruction_vals_ori = (255. * (np.copy(reconstruction_vals) + 1) / 2.).astype(int)
-        #reconstruction = sample_masks * reconstruction_vals_ori + (1 - sample_masks) * samples
+        reconstruction_out = sample_masks * reconstruction_vals_ori + (1 - sample_masks) * samples
 
-        scipy.misc.imsave(os.path.join('./out', '{}_leftImg8bit.png'.format(name)), reconstruction_vals_ori[0, :, :, :])
+        scipy.misc.imsave(os.path.join('./out', '{}_leftImg8bit.png'.format(name)), reconstruction_out[0, :, :, :].astype(np.uint8))
 

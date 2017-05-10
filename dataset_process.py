@@ -3347,5 +3347,5 @@ def CVPR_syn():
         #    break
 
 if __name__ == '__main__':
-    wrong_similiar_random()
+    #wrong_similiar_random()
 

@@ -86,7 +86,7 @@ def store_single(filename, height , width, col_num, sel):
     name, extension = filename.split('.')
     col, row = sel % col_num, sel / col_num
     sel_image = img[row*height:(row+1)*height, col*width:(col+1)*width, :]
-    scipy.misc.imsave('yo_single.' + extension, sel_image)
+    scipy.misc.imsave('single.' + extension, sel_image)
 
 
 def crop_images(dataset_dir):
@@ -3347,5 +3347,7 @@ def CVPR_syn():
         #    break
 
 if __name__ == '__main__':
+    store_single('/data/vllab1/CVPR/workshop/predict_training/7200_pred.png', 128, 256, 3, 2)
     #wrong_similiar_random()
+    pass
 

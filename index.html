@@ -115,6 +115,9 @@
     </head>
 
     <body>
+    <!-- TITLE & TEASER & ABSTRACT-->
+    <div>
+        <!-- TITLE -->
         <center>
         <span style="font-size:36px">Detecting Nonexistent Pedestrians</span><br><br>
             <table align=center width=800px>
@@ -157,23 +160,84 @@
                   </td>
             </table>
         </center>
-
-        <!--- Tease --->
         <br>
-        <table align=center width=850px>
+        <!-- TEASER -->
+        <!--<table align=center width=850px>
         <tr>
           <td width=600px>
             <center>
-                <a href="./images/teaser_v3.png"><img class="" src = "./src/teaser.png" height="1000px"></img></href></a><br>
+                <a href="./src/teaser.png"><img class="" src = "./src/teaser.png" height="1000px"></href></a><br>
             </center>
           </td>
         </tr>
-          <td width=600px>
-              <center>
-                <span style="font-size:14px"><i>Example results on several image-to-image translation problems. In each case we use the same architecture and objective, simply training on different data.</i>
-              <center>
-          </td>
+        <td width=600px>
+          <center>
+              <span style="font-size:14px"><i>Examples of the synthesis pipeline. We adjust the image brightness for better visualization. From left to right: input images, predicted heatmaps, and synthesized images with phantom pedestrians according to the predicted heatmaps. The likelihoods of head and feet positions are depicted in red and blue</i></span>
+          </center>
+        </td>
+        </table> -->
+        <!-- ABSTRACT -->
+        <table align=center width=850px>
+          <center><h1>Abstract</h1></center>
+          <tr>
+            <td>
+                We explore beyond object detection and semantic segmentation, and propose to address the problem of estimating the presence probabilities of nonexistent pedestrians in a street scene.Our method builds upon a combination of generative and discriminative procedures to achieve the perceptual capability of figuring out missing visual information. We adopt state-of-the-art inpainting techniques to generate the training data for nonexistent pedestrian detection. The learned detector can predict the probability of observing a pedestrian at some location in image, even if that location exhibits only the background.We evaluate our method by inserting pedestrians into images according to the presence probabilities and conducting user study to determine the `realisticness' of synthetic images. The empirical results show that our method can capture the idea of where the reasonable places are for pedestrians to walk or stand in a street scene.
+            </td>
+          </tr>
+        </table>
+        <br><br>
+    </div>
+    <hr>
+    <!-- VIDEO & PPT-->
+    <div>
+        <br>
+        <table align=center width=1100px>
+          <tr>
+              <td width=300px>
+                <center>
+                    <span style="font-size:22px"><a href="https://www.youtube.com/watch?v=MF70VeZYajo">Two-minute Papers</a></span><br>
+                    <iframe width="560" height="315" src="https://www.youtube.com/watch?v=MF70VeZYajo" frameborder="0" allowfullscreen></iframe>
+                    <div style="width:560px; text-align:left; font-size:14px">Karoly Zsolnai-Feher made the above as part of his very cool <a href="https://www.youtube.com/channel/UCbfYPyITQ-7l4upoX8nvctg">"Two-minute papers" series</a>.</div>
+                </center>
+              </td>
 
+              <td width=300px>
+                <center>
+                    <span style="font-size:22px"><a href='https://affinelayer.com/pix2pix/'>Affinelayer blog post</a></span><br>
+                    <a href="https://affinelayer.com/pix2pix/"><img src="./images/hesse_blog_post.png" width = "270px"></a><br>
+                <div style="width:270px; text-align:left; font-size:14px">Great explanation by Christopher Hesse, also documenting his <a href="https://github.com/affinelayer/pix2pix-tensorflow">tensorflow port</a> of our code.</div></center>
+              </td>
+
+           </tr>
+        </table>
+        <br><br>
+    </div>
+        <!-- NETWORK ARCHITECTURE -->
+        <center><h1>Network architecture</h1></center>
+        <table align=center width=850px>
+        <tr>
+          <td width=1000px>
+            <center>
+                <a href="./src/network.png"><img class="" src = "./src/network.png" width="800px"></href></a><br>
+            </center>
+          </td>
+        </tr>
+        </table>
+        <hr>
+
+        <!-- Experiments -->
+        <center><h1>Experiments</h1></center>
+        Here we show comprehensive results from each experiment in our paper. Please see the paper for details on these experiments.<br>
+        <br>
+
+        <table align=center width=600px>
+
+        <tr>
+        <td valign="top">
+        </td>
+        <td valign="top">
+        </td>
+        </tr>
         </table>
     </body>
 

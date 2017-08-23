@@ -16,7 +16,7 @@
         margin-left: auto;
         margin-right: auto;
     }
-    td.space {
+    td.space, div * {
         padding-left: 20px;
         padding-right: 20px;
     }
@@ -45,64 +45,41 @@
     <!-- TITLE & TEASER & ABSTRACT-->
     <div>
         <!-- TITLE -->
-        <div style="text-align: center;">
-            <span style="font-size:36px">Detecting Nonexistent Pedestrians</span><br><br>
-            <table width=800px>
+        <div>
+            <div><h1 style="font-size:36px; text-align: center;">Detecting Nonexistent Pedestrians</h1></div>
+            <table>
+                <tr>
+                    <td class="space">
+                        <span style="font-size:18px;"><a href="https://ydnaandy123.github.io/">Jui-Ting Chien</a></span>
+                    </td>
+                    <td class="space">
+                        <span style="font-size:18px;"><a href="https://ydnaandy123.github.io/">Chia-Jung Chou</a></span>
+                    </td>
+                    <td class="space">
+                        <span style="font-size:18px;"><a href="https://ydnaandy123.github.io/">Ding-Jie Chen</a></span>
+                    </td>
+                    <td class="space">
+                        <span style="font-size:18px;"><a href="http://www.cs.nthu.edu.tw/~htchen/">Hwann-Tzong Chen</a></span>
+                    </td>
+                </tr>
+            </table>
+            <div><h3 style="font-size:18px; text-align: center;">National Tsing-Hua University</h3></div>
+            <div style="margin-top: -15px;"><h3 style="font-size:18px; text-align: center;">In ICCV 2017 workshop</h3></div>
+            <table style="width: 30%">
               <tr>
-                  <td align=center width=100px>
-                    <center>
-                        <span style="font-size:18px"><a href="http://people.eecs.berkeley.edu/~isola/">Jui-Ting Chien</a></span>
-                    </center>
+                  <td class="space">
+                    <span style="font-size:24px"><a href='https://github.com/ydnaandy123/streetview_synthesize'>[Paper]</a></span>
                   </td>
-                  <td align=center width=100px>
-                    <center>
-                        <span style="font-size:18px"><a href="https://people.eecs.berkeley.edu/~junyanz/">Chia-Jung Chou</a></span>
-                    </center>
-                  </td>
-                  <td align=center width=100px>
-                    <center>
-                        <span style="font-size:18px"><a href="https://people.eecs.berkeley.edu/~tinghuiz/">Ding-Jie Chen</a></span>
-                    </center>
-                  </td>
-                  <td align=center width=100px>
-                    <center>
-                        <span style="font-size:18px"><a href="http://www.eecs.berkeley.edu/~efros/">Hwann-Tzong Chen</a></span>
-                    </center>
-                  </td>
-            </table><br>
-            <span style="font-size:18px">National Tsing-Hua University</span><br>
-            <span style="font-size:18px">In ICCV 2017</span><br><br>
-
-            <table align=center width=300px>
-              <tr>
-                  <td align=center width=50px>
-                    <center>
-                        <span style="font-size:24px"><a href='https://github.com/ydnaandy123/streetview_synthesize'>[Paper]</a></span>
-                    </center>
-                  </td>
-                  <td align=center width=50px>
-                    <center>
-                        <span style="font-size:24px"><a href='https://github.com/ydnaandy123/streetview_synthesize'>[GitHub]</a></span>
-                    </center>
+                  <td class="space">
+                    <span style="font-size:24px"><a href='https://github.com/ydnaandy123/streetview_synthesize'>[GitHub]</a></span>
                   </td>
             </table>
         </div>
         <br>
         <!-- TEASER -->
-        <table align=center width=850px>
-        <tr>
-          <td width=600px>
-            <center>
-                <a href="./src/teaser.png"><img class="" src = "./src/teaser.png" height="1000px"></href></a><br>
-            </center>
-          </td>
-        </tr>
-        <td width=600px>
-          <center>
-              <span style="font-size:14px"><i>Examples of the synthesis pipeline. We adjust the image brightness for better visualization. From left to right: input images, predicted heatmaps, and synthesized images with phantom pedestrians according to the predicted heatmaps. The likelihoods of head and feet positions are depicted in red and blue</i></span>
-          </center>
-        </td>
-        </table>
+        <div><a href="./src/teaser.png"><img src="./src/teaser.png" height="1000px"></a><div>
+        <div style="font-size:14px"><i>Examples of the synthesis pipeline. We adjust the image brightness for better visualization. From left to right: input images, predicted heatmaps, and synthesized images with phantom pedestrians according to the predicted heatmaps. The likelihoods of head and feet positions are depicted in red and blue</i></div>
+
         <!-- ABSTRACT -->
         <table align=center width=850px>
           <center><h1>Abstract</h1></center>
@@ -126,8 +103,8 @@
               </td>
 
               <td class="space">
-                    <span style="font-size:22px"><a href='https://affinelayer.com/pix2pix/'>Intro</a></span><br>
-                    <iframe src="https://drive.google.com/file/d/0B4AGJgH-EFvIUEdySV9FQ2hGVlE/preview" width="640" height="480"></iframe>
+                    <span style="font-size:22px"><a href='https://affinelayer.com/pix2pix/'>Intro powerpoint</a></span><br>
+                    <iframe src="https://drive.google.com/file/d/0B4AGJgH-EFvIUEdySV9FQ2hGVlE/preview" width="640" height="460"></iframe>
               </td>
            </tr>
         </table>
@@ -138,35 +115,44 @@
         <h1 style="text-align: center;">Network architecture</h1>
         <table>
         <tr>
-            <td width=1000px>
-            <center>
-                <a href="./src/network.png"><img class="" src = "./src/network.png" width="800px"></href></a><br>
-            </center>
+            <td>
+                <a href="./src/network.png"><img class="" src = "./src/network.png" width="800px"></a>
             </td>
-            </tr>
-            <td width=600px>
-              <center>
+        </tr>
+        <tr>
+            <td>
                   <span style="font-size:14px"><i>The architecture of the proposed model FCN+D.</i></span>
-              </center>
             </td>
+        </tr>
         </table>
         <hr>
     </div>
-    <hr>
-        <!-- Experiments -->
-        <h1 style="text-align:center">Experiments</h1>
-        Here we show comprehensive results from each experiment in our paper. Please see the paper for details on these experiments.<br>
-        <br>
-
-        <table align=center width=600px>
-
-        <tr>
-        <td valign="top">
-        </td>
-        <td valign="top">
-        </td>
-        </tr>
+    <br><hr>
+    <!-- ACKNOWLEDGEMENT -->
+    <div>
+        <h1 style="text-align: center;">Acknowledgements</h1>
+        <table style="width: 80%;">
+            <tr>
+                <td>
+                    <i style="font-size:14px; text-align: left;">Acknowledgements.</i>
+                </td>
+            </tr>
         </table>
+    </div>
+    <br>
+    <!-- ACKNOWLEDGEMENT -->
+    <div>
+        <h1 style="text-align: center;">Acknowledgements</h1>
+        <table style="width: 80%;">
+            <tr>
+                <td>
+                    <i style="font-size:14px; text-align: left;">Acknowledgements.</i>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <br>
+
     </body>
 
 </html>

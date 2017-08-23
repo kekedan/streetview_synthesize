@@ -5,21 +5,7 @@
 		font-size:17px;
 		margin-left: auto;
 		margin-right: auto;
-		width: 1100px;
 	}
-	h1 {
-		font-weight:300;
-        font-size: 30px;
-	}
-
-    body *{
-        margin-left: auto;
-        margin-right: auto;
-    }
-    td.space, div * {
-        padding-left: 20px;
-        padding-right: 20px;
-    }
 	hr {
 		border: 0;
 		height: 1px;
@@ -33,6 +19,28 @@
 	a:hover {
 		color: #208799;
 	}
+	table.center{
+	    margin: 0 auto 0 auto; border-spacing: 20px 0px;
+	}
+	img.center{
+	    display: block;
+	    margin: 0 auto;
+	}
+    .fade {
+        margin:0 auto;
+    }
+    .fade img.top{
+        position: relative;
+        left: 0px;
+        top: -150px;
+        -webkit-transition: opacity 1s ease-in-out;
+        -moz-transition: opacity 1s ease-in-out;
+        -o-transition: opacity 1s ease-in-out;
+        transition: opacity 1s ease-in-out;
+    }
+    .fade img.top:hover{
+        opacity: 0.0;
+    }
 </style>
 <html>
     <head>
@@ -42,116 +50,167 @@
     </head>
 
     <body>
-    <!-- TITLE & TEASER & ABSTRACT-->
-    <div>
-        <!-- TITLE -->
+        <!-- TITLE & TEASER & ABSTRACT-->
         <div>
-            <div><h1 style="font-size:36px; text-align: center;">Detecting Nonexistent Pedestrians</h1></div>
-            <table>
-                <tr>
-                    <td class="space">
-                        <span style="font-size:18px;"><a href="https://ydnaandy123.github.io/">Jui-Ting Chien</a></span>
-                    </td>
-                    <td class="space">
-                        <span style="font-size:18px;"><a href="https://ydnaandy123.github.io/">Chia-Jung Chou</a></span>
-                    </td>
-                    <td class="space">
-                        <span style="font-size:18px;"><a href="https://ydnaandy123.github.io/">Ding-Jie Chen</a></span>
-                    </td>
-                    <td class="space">
-                        <span style="font-size:18px;"><a href="http://www.cs.nthu.edu.tw/~htchen/">Hwann-Tzong Chen</a></span>
-                    </td>
+            <!-- TITLE -->
+            <div>
+                <h1 style="font-size:36px; text-align: center;">Detecting Nonexistent Pedestrians</h1>
+
+                <table class="center">
+                    <tr>
+                        <td>
+                            <a href="https://ydnaandy123.github.io/" style="font-size:18px;">Jui-Ting Chien</a>
+                        </td>
+                        <td>
+                            <a href="https://ydnaandy123.github.io/" style="font-size:18px;">Chia-Jung Chou</a>
+                        </td>
+                        <td>
+                            <a href="https://ydnaandy123.github.io/" style="font-size:18px;">Ding-Jie Chen</a>
+                        </td>
+                        <td>
+                            <a href="http://www.cs.nthu.edu.tw/~htchen/" style="font-size:18px;">Hwann-Tzong Chen</a>
+                        </td>
+                    </tr>
+                </table>
+
+                <h3 style="font-size:18px; text-align: center;">National Tsing-Hua University</h3>
+                <h3 style="font-size:18px; text-align: center; margin-top: -10px">In ICCV 2017 workshop</h3>
+                <table class="center" style="border-spacing: 60px 0px">
+                  <tr>
+                      <td>
+                        <a href='https://github.com/ydnaandy123/streetview_synthesize' style="font-size:24px;">[Paper]</a>
+                      </td>
+                      <td>
+                        <a href='https://github.com/ydnaandy123/streetview_synthesize' style="font-size:24px;">[GitHub]</a>
+                      </td>
+                  </tr>
+                </table>
+            </div>
+            <br>
+            <!-- TEASER -->
+            <div>
+                <a href="./src/teaser.png"><img src="./src/teaser.png" style="width: 1000px; display: block; margin: 0 auto;"></a>
+                <div style="width: 1000px; margin: 0 auto"><i style="font-size:14px;">Examples of the synthesis pipeline. We adjust the image brightness for better visualization. From left to right: input images, predicted heatmaps, and synthesized images with phantom pedestrians according to the predicted heatmaps. The likelihoods of head and feet positions are depicted in red and blue</i></div>
+            </div>
+            <br>
+            <!-- ABSTRACT -->
+            <h1 style="text-align: center;">Abstract</h1>
+            <div style="width: 70%; margin: 0 auto;"><p>We explore beyond object detection and semantic segmentation, and propose to address the problem of estimating the presence probabilities of nonexistent pedestrians in a street scene.Our method builds upon a combination of generative and discriminative procedures to achieve the perceptual capability of figuring out missing visual information. We adopt state-of-the-art inpainting techniques to generate the training data for nonexistent pedestrian detection. The learned detector can predict the probability of observing a pedestrian at some location in image, even if that location exhibits only the background.We evaluate our method by inserting pedestrians into images according to the presence probabilities and conducting user study to determine the `realisticness' of synthetic images. The empirical results show that our method can capture the idea of where the reasonable places are for pedestrians to walk or stand in a street scene.</p></div>
+        </div>
+        <hr>
+        <!-- VIDEO & PPT-->
+        <div>
+            <h1 style="text-align: center;">Supplementary</h1>
+            <table class="center">
+                <tr style="vertical-align: top;">
+                  <td>
+                    <div style="font-size:22px"><a href="https://www.youtube.com/embed/MF70VeZYajo">Intro video</a></div>
+                    <iframe width="560" height="315" src="https://www.youtube.com/embed/MF70VeZYajo" frameborder="0" allowfullscreen></iframe>
+                  </td>
+
+                  <td>
+                        <div style="font-size:22px"><a href='https://affinelayer.com/pix2pix/'>Intro powerpoint</a></div>
+                        <iframe src="https://drive.google.com/file/d/0B4AGJgH-EFvIUEdySV9FQ2hGVlE/preview" width="640" height="460"></iframe>
+                  </td>
                 </tr>
             </table>
-            <div><h3 style="font-size:18px; text-align: center;">National Tsing-Hua University</h3></div>
-            <div style="margin-top: -15px;"><h3 style="font-size:18px; text-align: center;">In ICCV 2017 workshop</h3></div>
-            <table style="width: 30%">
-              <tr>
-                  <td class="space">
-                    <span style="font-size:24px"><a href='https://github.com/ydnaandy123/streetview_synthesize'>[Paper]</a></span>
-                  </td>
-                  <td class="space">
-                    <span style="font-size:24px"><a href='https://github.com/ydnaandy123/streetview_synthesize'>[GitHub]</a></span>
-                  </td>
+        </div>
+        <br><hr>
+        <!-- NETWORK ARCHITECTURE -->
+        <div>
+            <h1 style="text-align: center;">Proposed model</h1>
+            <a href="./src/network.png"><img class="center" src = "./src/network.png" width="1000px" style="margin-top: 10px"></a>
+            <p style="font-size:14px; text-align:center;"><i>The architecture of the proposed model FCN+D.</i></p>
+        </div>
+        <br><hr>
+        <!-- Results -->
+        <div>
+            <h1 style="text-align: center;">Predicted results</h1>
+            <p style="text-align: center;">Hover mouse over the input images to see the predicted heatmaps.</p>
+            <table class="center">
+                <div>
+                    <td>
+                        <div class="fade">
+                        <img width="300px" src="./src/d1_h.png" class="bottom">
+                        </div>
+                        <div class="fade">
+                        <img width="300px" src="./src/d1.png" class="top">
+                        </div>
+                    </td>
+                    <td >
+                        <div class="fade">
+                        <img width="300px" src="./src/d2_h.png" class="bottom">
+                        </div>
+                        <div class="fade">
+                        <img width="300px" src="./src/d2.png" class="top">
+                        </div>
+                    </td>
+                    <td>
+                        <div class="fade">
+                        <img width="300px" src="./src/t1_h.png" class="bottom">
+                        </div>
+                        <div class="fade">
+                        <img width="300px" src="./src/t1.png" class="top">
+                        </div>
+                    </td>
+                    <td >
+                        <div class="fade">
+                        <img width="300px" src="./src/t2_h.png" class="bottom">
+                        </div>
+                        <div class="fade">
+                        <img width="300px" src="./src/t2.png" class="top">
+                        </div>
+                    </td>
+                </div>
+            </table>
+
+            <table class="center" style="margin-top: -120px; margin-bottom: -140px">
+
+                <div style="position:relative; top: -120px">
+                    <td>
+                        <div class="fade">
+                        <img width="300px" src="./src/p1_h.png" class="bottom">
+                        </div>
+                        <div class="fade">
+                        <img width="300px" src="./src/p1.png" class="top">
+                        </div>
+                    </td>
+                    <td >
+                        <div class="fade">
+                        <img width="300px" src="./src/p2_h.png" class="bottom">
+                        </div>
+                        <div class="fade">
+                        <img width="300px" src="./src/p2.png" class="top">
+                        </div>
+                    </td>
+                    <td>
+                        <div class="fade">
+                        <img width="300px" src="./src/g1_h.png" class="bottom">
+                        </div>
+                        <div class="fade">
+                        <img width="300px" src="./src/g1.png" class="top">
+                        </div>
+                    </td>
+                    <td >
+                        <div class="fade">
+                        <img width="300px" src="./src/g2_h.png" class="bottom">
+                        </div>
+                        <div class="fade">
+                        <img width="300px" src="./src/g2.png" class="top">
+                        </div>
+                    </td>
+                </div>
             </table>
         </div>
+        <br><hr>
+        <!-- ACKNOWLEDGEMENT -->
+        <div>
+            <h1 style="text-align: center;">Acknowledgements</h1>
+            <div style="width: 70%; margin: 0 auto;"><p>We explore beyond object detection and semantic segmentation, and propose to address the problem of estimating the presence probabilities of nonexistent pedestrians in a street scene.Our method builds upon a combination of generative and discriminative procedures to achieve the perceptual capability of figuring out missing visual information. We adopt state-of-the-art inpainting techniques to generate the training data for nonexistent pedestrian detection. The learned detector can predict the probability of observing a pedestrian at some location in image, even if that location exhibits only the background.We evaluate our method by inserting pedestrians into images according to the presence probabilities and conducting user study to determine the `realisticness' of synthetic images. The empirical results show that our method can capture the idea of where the reasonable places are for pedestrians to walk or stand in a street scene.</p></div>
+
+
+        </div>
         <br>
-        <!-- TEASER -->
-        <div><a href="./src/teaser.png"><img src="./src/teaser.png" height="1000px"></a><div>
-        <div style="font-size:14px"><i>Examples of the synthesis pipeline. We adjust the image brightness for better visualization. From left to right: input images, predicted heatmaps, and synthesized images with phantom pedestrians according to the predicted heatmaps. The likelihoods of head and feet positions are depicted in red and blue</i></div>
-
-        <!-- ABSTRACT -->
-        <table align=center width=850px>
-          <center><h1>Abstract</h1></center>
-          <tr>
-            <td>
-                We explore beyond object detection and semantic segmentation, and propose to address the problem of estimating the presence probabilities of nonexistent pedestrians in a street scene.Our method builds upon a combination of generative and discriminative procedures to achieve the perceptual capability of figuring out missing visual information. We adopt state-of-the-art inpainting techniques to generate the training data for nonexistent pedestrian detection. The learned detector can predict the probability of observing a pedestrian at some location in image, even if that location exhibits only the background.We evaluate our method by inserting pedestrians into images according to the presence probabilities and conducting user study to determine the `realisticness' of synthetic images. The empirical results show that our method can capture the idea of where the reasonable places are for pedestrians to walk or stand in a street scene.
-            </td>
-          </tr>
-        </table>
-        <br><br>
-    </div>
-    <hr>
-    <!-- VIDEO & PPT-->
-    <div>
-        <h1 style="text-align: center;">Intro video and powerpoint</h1>
-        <table>
-          <tr style="vertical-align: top;">
-              <td class="space">
-                    <span style="font-size:22px"><a href="https://www.youtube.com/embed/MF70VeZYajo">Intro video</a></span>
-                    <iframe width="560" height="315" src="https://www.youtube.com/embed/MF70VeZYajo" frameborder="0" allowfullscreen></iframe>
-              </td>
-
-              <td class="space">
-                    <span style="font-size:22px"><a href='https://affinelayer.com/pix2pix/'>Intro powerpoint</a></span><br>
-                    <iframe src="https://drive.google.com/file/d/0B4AGJgH-EFvIUEdySV9FQ2hGVlE/preview" width="640" height="460"></iframe>
-              </td>
-           </tr>
-        </table>
-    </div>
-    <br><hr>
-    <!-- NETWORK ARCHITECTURE -->
-    <div>
-        <h1 style="text-align: center;">Network architecture</h1>
-        <table>
-        <tr>
-            <td>
-                <a href="./src/network.png"><img class="" src = "./src/network.png" width="800px"></a>
-            </td>
-        </tr>
-        <tr>
-            <td>
-                  <span style="font-size:14px"><i>The architecture of the proposed model FCN+D.</i></span>
-            </td>
-        </tr>
-        </table>
-        <hr>
-    </div>
-    <br><hr>
-    <!-- ACKNOWLEDGEMENT -->
-    <div>
-        <h1 style="text-align: center;">Acknowledgements</h1>
-        <table style="width: 80%;">
-            <tr>
-                <td>
-                    <i style="font-size:14px; text-align: left;">Acknowledgements.</i>
-                </td>
-            </tr>
-        </table>
-    </div>
-    <br>
-    <!-- ACKNOWLEDGEMENT -->
-    <div>
-        <h1 style="text-align: center;">Acknowledgements</h1>
-        <table style="width: 80%;">
-            <tr>
-                <td>
-                    <i style="font-size:14px; text-align: left;">Acknowledgements.</i>
-                </td>
-            </tr>
-        </table>
-    </div>
-    <br>
 
     </body>
 

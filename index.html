@@ -7,45 +7,25 @@
 		margin-right: auto;
 		width: 1100px;
 	}
-
 	h1 {
 		font-weight:300;
         font-size: 30px;
 	}
 
-	.disclaimerbox {
-		background-color: #eee;
-		border: 1px solid #eeeeee;
-		border-radius: 10px ;
-		-moz-border-radius: 10px ;
-		-webkit-border-radius: 10px ;
-		padding: 20px;
+    body *{
+        margin-left: auto;
+        margin-right: auto;
+    }
+    td.space {
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+	hr {
+		border: 0;
+		height: 1px;
+		background-image: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0));
 	}
-
-	video.header-vid {
-		height: 140px;
-		border: 1px solid black;
-		border-radius: 10px ;
-		-moz-border-radius: 10px ;
-		-webkit-border-radius: 10px ;
-	}
-
-	img.header-img {
-		height: 140px;
-		border: 1px solid black;
-		border-radius: 10px ;
-		-moz-border-radius: 10px ;
-		-webkit-border-radius: 10px ;
-	}
-
-	img.rounded {
-		border: 1px solid #eeeeee;
-		border-radius: 10px ;
-		-moz-border-radius: 10px ;
-		-webkit-border-radius: 10px ;
-	}
-
-	a:link,a:visited
+    a:link,a:visited
 	{
 		color: #1367a7;
 		text-decoration: none;
@@ -53,59 +33,6 @@
 	a:hover {
 		color: #208799;
 	}
-
-	td.dl-link {
-		height: 160px;
-		text-align: center;
-		font-size: 22px;
-	}
-
-	.layered-paper-big { /* modified from: http://css-tricks.com/snippets/css/layered-paper/ */
-		box-shadow:
-		        0px 0px 1px 1px rgba(0,0,0,0.35), /* The top layer shadow */
-		        5px 5px 0 0px #fff, /* The second layer */
-		        5px 5px 1px 1px rgba(0,0,0,0.35), /* The second layer shadow */
-		        10px 10px 0 0px #fff, /* The third layer */
-		        10px 10px 1px 1px rgba(0,0,0,0.35), /* The third layer shadow */
-		        15px 15px 0 0px #fff, /* The fourth layer */
-		        15px 15px 1px 1px rgba(0,0,0,0.35), /* The fourth layer shadow */
-		        20px 20px 0 0px #fff, /* The fifth layer */
-		        20px 20px 1px 1px rgba(0,0,0,0.35), /* The fifth layer shadow */
-		        25px 25px 0 0px #fff, /* The fifth layer */
-		        25px 25px 1px 1px rgba(0,0,0,0.35); /* The fifth layer shadow */
-		margin-left: 10px;
-		margin-right: 45px;
-	}
-
-
-	.layered-paper { /* modified from: http://css-tricks.com/snippets/css/layered-paper/ */
-		box-shadow:
-		        0px 0px 1px 1px rgba(0,0,0,0.35), /* The top layer shadow */
-		        5px 5px 0 0px #fff, /* The second layer */
-		        5px 5px 1px 1px rgba(0,0,0,0.35), /* The second layer shadow */
-		        10px 10px 0 0px #fff, /* The third layer */
-		        10px 10px 1px 1px rgba(0,0,0,0.35); /* The third layer shadow */
-		margin-top: 5px;
-		margin-left: 10px;
-		margin-right: 30px;
-		margin-bottom: 5px;
-	}
-
-	.vert-cent {
-		position: relative;
-	    top: 50%;
-	    transform: translateY(-50%);
-	}
-
-	hr
-	{
-		border: 0;
-		height: 1px;
-		background-image: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0));
-	}
-    table td, table td * {
-        vertical-align: top;
-    }
 </style>
 <html>
     <head>
@@ -118,9 +45,9 @@
     <!-- TITLE & TEASER & ABSTRACT-->
     <div>
         <!-- TITLE -->
-        <center>
-        <span style="font-size:36px">Detecting Nonexistent Pedestrians</span><br><br>
-            <table align=center width=800px>
+        <div style="text-align: center;">
+            <span style="font-size:36px">Detecting Nonexistent Pedestrians</span><br><br>
+            <table width=800px>
               <tr>
                   <td align=center width=100px>
                     <center>
@@ -150,7 +77,7 @@
               <tr>
                   <td align=center width=50px>
                     <center>
-                        <span style="font-size:24px"><a href='https://github.com/ydnaandy123/streetview_synthesize'>[Paper]</a>
+                        <span style="font-size:24px"><a href='https://github.com/ydnaandy123/streetview_synthesize'>[Paper]</a></span>
                     </center>
                   </td>
                   <td align=center width=50px>
@@ -159,10 +86,10 @@
                     </center>
                   </td>
             </table>
-        </center>
+        </div>
         <br>
         <!-- TEASER -->
-        <!--<table align=center width=850px>
+        <table align=center width=850px>
         <tr>
           <td width=600px>
             <center>
@@ -175,7 +102,7 @@
               <span style="font-size:14px"><i>Examples of the synthesis pipeline. We adjust the image brightness for better visualization. From left to right: input images, predicted heatmaps, and synthesized images with phantom pedestrians according to the predicted heatmaps. The likelihoods of head and feet positions are depicted in red and blue</i></span>
           </center>
         </td>
-        </table> -->
+        </table>
         <!-- ABSTRACT -->
         <table align=center width=850px>
           <center><h1>Abstract</h1></center>
@@ -190,43 +117,44 @@
     <hr>
     <!-- VIDEO & PPT-->
     <div>
-        <br>
-        <table align=center width=1100px>
-          <tr>
-              <td width=300px>
-                <center>
-                    <span style="font-size:22px"><a href="https://www.youtube.com/watch?v=MF70VeZYajo">Two-minute Papers</a></span><br>
-                    <iframe width="560" height="315" src="https://www.youtube.com/watch?v=MF70VeZYajo" frameborder="0" allowfullscreen></iframe>
-                    <div style="width:560px; text-align:left; font-size:14px">Karoly Zsolnai-Feher made the above as part of his very cool <a href="https://www.youtube.com/channel/UCbfYPyITQ-7l4upoX8nvctg">"Two-minute papers" series</a>.</div>
-                </center>
+        <h1 style="text-align: center;">Intro video and powerpoint</h1>
+        <table>
+          <tr style="vertical-align: top;">
+              <td class="space">
+                    <span style="font-size:22px"><a href="https://www.youtube.com/embed/MF70VeZYajo">Intro video</a></span>
+                    <iframe width="560" height="315" src="https://www.youtube.com/embed/MF70VeZYajo" frameborder="0" allowfullscreen></iframe>
               </td>
 
-              <td width=300px>
-                <center>
-                    <span style="font-size:22px"><a href='https://affinelayer.com/pix2pix/'>Affinelayer blog post</a></span><br>
-                    <a href="https://affinelayer.com/pix2pix/"><img src="./images/hesse_blog_post.png" width = "270px"></a><br>
-                <div style="width:270px; text-align:left; font-size:14px">Great explanation by Christopher Hesse, also documenting his <a href="https://github.com/affinelayer/pix2pix-tensorflow">tensorflow port</a> of our code.</div></center>
+              <td class="space">
+                    <span style="font-size:22px"><a href='https://affinelayer.com/pix2pix/'>Intro</a></span><br>
+                    <iframe src="https://drive.google.com/file/d/0B4AGJgH-EFvIUEdySV9FQ2hGVlE/preview" width="640" height="480"></iframe>
               </td>
-
            </tr>
         </table>
-        <br><br>
     </div>
-        <!-- NETWORK ARCHITECTURE -->
-        <center><h1>Network architecture</h1></center>
-        <table align=center width=850px>
+    <br><hr>
+    <!-- NETWORK ARCHITECTURE -->
+    <div>
+        <h1 style="text-align: center;">Network architecture</h1>
+        <table>
         <tr>
-          <td width=1000px>
+            <td width=1000px>
             <center>
                 <a href="./src/network.png"><img class="" src = "./src/network.png" width="800px"></href></a><br>
             </center>
-          </td>
-        </tr>
+            </td>
+            </tr>
+            <td width=600px>
+              <center>
+                  <span style="font-size:14px"><i>The architecture of the proposed model FCN+D.</i></span>
+              </center>
+            </td>
         </table>
         <hr>
-
+    </div>
+    <hr>
         <!-- Experiments -->
-        <center><h1>Experiments</h1></center>
+        <h1 style="text-align:center">Experiments</h1>
         Here we show comprehensive results from each experiment in our paper. Please see the paper for details on these experiments.<br>
         <br>
 

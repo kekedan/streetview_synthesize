@@ -19,6 +19,11 @@
 	a:hover {
 		color: #208799;
 	}
+	div.block{
+	    width: 80%;
+	    margin: 0
+	    auto;
+	}
 	table.center{
 	    margin: 0 auto 0 auto; border-spacing: 20px 0px;
 	}
@@ -92,6 +97,9 @@
                       <td>
                         <a href='https://github.com/ydnaandy123/streetview_synthesize' style="font-size:24px;">[GitHub]</a>
                       </td>
+                      <td>
+                        <a href='https://github.com/ydnaandy123/streetview_synthesize' style="font-size:24px;">[Bibtex]</a>
+                      </td>
                   </tr>
                 </table>
             </div>
@@ -99,12 +107,12 @@
             <!-- TEASER -->
             <div>
                 <a href="./src/teaser.png"><img src="./src/teaser.png" style="width: 1000px; display: block; margin: 0 auto;"></a>
-                <div style="width: 1000px; margin: 0 auto"><i style="font-size:14px;">Examples of the synthesis pipeline. We adjust the image brightness for better visualization. From left to right: input images, predicted heatmaps, and synthesized images with phantom pedestrians according to the predicted heatmaps. The likelihoods of head and feet positions are depicted in red and blue</i></div>
+                <div style="width: 800px; margin: 0 auto"><i style="font-size:14px;">Examples of the synthesis pipeline. We adjust the image brightness for better visualization. From left to right: input images, predicted heatmaps, and synthesized images with phantom pedestrians according to the predicted heatmaps. The likelihoods of head and feet positions are depicted in red and blue</i></div>
             </div>
             <br>
             <!-- ABSTRACT -->
             <h1 style="text-align: center;">Abstract</h1>
-            <div style="width: 70%; margin: 0 auto;"><p>We explore beyond object detection and semantic segmentation, and propose to address the problem of estimating the presence probabilities of nonexistent pedestrians in a street scene.Our method builds upon a combination of generative and discriminative procedures to achieve the perceptual capability of figuring out missing visual information. We adopt state-of-the-art inpainting techniques to generate the training data for nonexistent pedestrian detection. The learned detector can predict the probability of observing a pedestrian at some location in image, even if that location exhibits only the background.We evaluate our method by inserting pedestrians into images according to the presence probabilities and conducting user study to determine the `realisticness' of synthetic images. The empirical results show that our method can capture the idea of where the reasonable places are for pedestrians to walk or stand in a street scene.</p></div>
+            <div class="block"><p>We explore beyond object detection and semantic segmentation, and propose to address the problem of estimating the presence probabilities of nonexistent pedestrians in a street scene.Our method builds upon a combination of generative and discriminative procedures to achieve the perceptual capability of figuring out missing visual information. We adopt state-of-the-art inpainting techniques to generate the training data for nonexistent pedestrian detection. The learned detector can predict the probability of observing a pedestrian at some location in image, even if that location exhibits only the background.We evaluate our method by inserting pedestrians into images according to the presence probabilities and conducting user study to determine the `realisticness' of synthetic images. The empirical results show that our method can capture the idea of where the reasonable places are for pedestrians to walk or stand in a street scene.</p></div>
         </div>
         <hr>
         <!-- Supplementary-->
@@ -135,7 +143,7 @@
         <!-- Results -->
         <div>
             <h1 style="text-align: center;">Predicted Results</h1>
-            <p style="text-align: center;">Hover mouse over the input images to see the predicted heatmaps.</p>
+            <p style="text-align: center;">Hover over the input images to see the predicted heatmaps <i>(The likelihoods of head and feet positions are depicted in red and blue.)</i></p>
             <table class="center">
                 <div>
                     <td>
@@ -215,19 +223,43 @@
         <!-- Related Work -->
         <div>
             <h1 style="text-align: center;">Recent Related Work</h1>
-            <table class="center">
-                <tr>
-                    <td>
-                        Ian J. Goodfellow, Jean Pouget-Abadie, Mehdi Mirza, Bing Xu, David Warde-Farley, Sherjil Ozair, Aaron Courville, and Yoshua Bengio. <b>Generative Adversarial Networks</b>. NIPS, 2014. <a href="https://arxiv.org/pdf/1406.2661v1.pdf">[PDF]</a></br>
-                    </td>
-                </tr>
-            </table>
+            <div class="block">
+                <p>
+                    Xiaolong Wang*, Rohit Girdhar*, and Abhinav Gupta. <strong><i> Binge Watching: Scaling Aff ordance Learning from Sitcoms. </i></strong>  Proc. of IEEE Conference on Computer Vision and Pattern Recognition <strong>(CVPR)</strong>, 2017 (<strong>spotlight</strong>) (*indicates equal contributions.)
+                    <a href="http://www.cs.cmu.edu/~xiaolonw/papers/CVPR_2017_VAE_affordance.pdf">[pdf]</a>
+                </p>
+            </div>
+            <div class="block">
+                <p>
+                    <Shiyu Huang and Deva Ramanan <strong><i> Expecting the Unexpected: Training Detectors for Unusual Pedestrians with Adversarial Imposters </i></strong>  Proc. of IEEE Conference on Computer Vision and Pattern Recognition <strong>(CVPR)</strong>, 2017.
+                    <a href="https://arxiv.org/pdf/1703.06283.pdf">[pdf]</a>
+                </p>
+            </div>
+            <div class="block">
+                <p>
+                    Jin Sun and David Jacobs. <strong><i> Seeing What Is Not There: Learning Context to Determine Where Objects Are Missing. </i></strong>  Proc. of IEEE Conference on Computer Vision and Pattern Recognition <strong>(CVPR)</strong>, 2017 (<strong>spotlight</strong>).
+                    <a href="https://arxiv.org/abs/1702.07971">[pdf]</a>
+                </p>
+            </div>
+            <div class="block">
+                <p>
+                    Junting Pan, Cristian Canton Ferrer, Kevin McGuinness, Noel O'Connor, Jordi Torres, Elisa Sayrol and Xavier Giro-i-Nieto. <strong><i> SalGAN: Visual Saliency Prediction with Generative Adversarial Networks </i></strong>  Proc. of IEEE Conference on Computer Vision and Pattern Recognition Scene Understanding Workshop <strong>(CVPR SUNw)</strong>, 2017 (<strong>spotlight</strong>).
+                    <a href="https://arxiv.org/abs/1701.01081">[pdf]</a>
+                </p>
+            </div>
+            <div class="block">
+                <p>
+                    Namhoon Lee, Xinshuo Weng, Vishnu Naresh Boddeti, Yu Zhang, Fares Beainy, Kris Kitani and Takeo Kanade. <strong><i> Visual Compiler: Synthesizing a Scene-Specific Pedestrian Detector and Pose Estimator</i></strong> .
+                    <a href="https://arxiv.org/abs/1701.01081">[pdf]</a>
+                </p>
+            </div>
+
         </div>
         <hr>
         <!-- ACKNOWLEDGEMENT -->
         <div>
             <h1 style="text-align: center;">Acknowledgements</h1>
-            <div style="width: 70%; margin: 0 auto;"><p>We explore beyond object detection and semantic segmentation, and propose to address the problem of estimating the presence probabilities of nonexistent pedestrians in a street scene.Our method builds upon a combination of generative and discriminative procedures to achieve the perceptual capability of figuring out missing visual information. We adopt state-of-the-art inpainting techniques to generate the training data for nonexistent pedestrian detection. The learned detector can predict the probability of observing a pedestrian at some location in image, even if that location exhibits only the background.We evaluate our method by inserting pedestrians into images according to the presence probabilities and conducting user study to determine the `realisticness' of synthetic images. The empirical results show that our method can capture the idea of where the reasonable places are for pedestrians to walk or stand in a street scene.</p></div>
+            <div class="block"><p>We explore beyond object detection and semantic segmentation, and propose to address the problem of estimating the presence probabilities of nonexistent pedestrians in a street scene.Our method builds upon a combination of generative and discriminative procedures to achieve the perceptual capability of figuring out missing visual information. We adopt state-of-the-art inpainting techniques to generate the training data for nonexistent pedestrian detection. The learned detector can predict the probability of observing a pedestrian at some location in image, even if that location exhibits only the background.We evaluate our method by inserting pedestrians into images according to the presence probabilities and conducting user study to determine the `realisticness' of synthetic images. The empirical results show that our method can capture the idea of where the reasonable places are for pedestrians to walk or stand in a street scene.</p></div>
         </div>
         <br>
 

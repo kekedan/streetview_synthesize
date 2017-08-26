@@ -1545,7 +1545,7 @@ def wrong_similiar_random():
     dataset_dir = '/data/vllab1/dataset/CITYSCAPES/leftImg8bit_trainvaltest/leftImg8bit/test'
     data = []
     for folder in os.listdir(dataset_dir):
-        path = os.path.join(dataset_dir, folder, "berlin_000116_000019_leftImg8bit.png")
+        path = os.path.join(dataset_dir, folder, "munich_000094_000019_leftImg8bit.png")
         data.extend(glob(path))
     image_name = sorted(data)
     data_len = len(image_name)
@@ -3347,7 +3347,7 @@ def CVPR_syn():
         #    break
 
 if __name__ == '__main__':
-    store_single('/data/vllab1/CVPR/workshop/predict_training/7200_pred.png', 128, 256, 3, 2)
-    #wrong_similiar_random()
+    #store_single('/data/vllab1/CVPR/workshop/predict_training/7200_pred.png', 128, 256, 3, 2)
+    wrong_similiar_random()
     pass
 

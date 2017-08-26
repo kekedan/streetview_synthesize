@@ -61,3 +61,9 @@ split each pedestrian in a single view
 1. FCN [FCN_haetmap_instance_pose, batch_size: 9]
 2. Stacked Hourglass
 3. FCN+D
+
+## Folder
+- Context Encoders_Feature Learning by Inpainting: image inpainting
+- DCGAN: some experiments about detecting non-existing pedestrians with DCGAN-like model
+- FCN: some experiments about detecting non-existing pedestrians with FCN model
+- 

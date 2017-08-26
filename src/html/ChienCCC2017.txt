@@ -1,0 +1,8 @@
+@inproceedings{ChienCCC2017,
+  author = {Jui-Ting Chien and Chia-Jung Chou and Ding-Jie Chen and Hwann-Tzong Chen},
+  booktitle = {ICCV Workshops},
+  publisher = {IEEE},
+  title = {Detecting Nonexistent Pedestrians},
+  year = {2017}
+}
+

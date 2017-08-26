@@ -20,7 +20,7 @@
 		color: #208799;
 	}
 	div.block{
-	    width: 70%;
+	    width: 80%;
 	    margin: 0
 	    auto;
 	}
@@ -37,13 +37,25 @@
     .fade img.top{
         position: relative;
         left: 0px;
-        top: -150px;
+        top: -256px;
         -webkit-transition: opacity 1s ease-in-out;
         -moz-transition: opacity 1s ease-in-out;
         -o-transition: opacity 1s ease-in-out;
         transition: opacity 1s ease-in-out;
     }
     .fade img.top:hover{
+        opacity: 0.0;
+    }
+    .fade img.top_s{
+        position: relative;
+        left: 0px;
+        top: -150px;
+        -webkit-transition: opacity 1s ease-in-out;
+        -moz-transition: opacity 1s ease-in-out;
+        -o-transition: opacity 1s ease-in-out;
+        transition: opacity 1s ease-in-out;
+    }
+    .fade img.top_s:hover{
         opacity: 0.0;
     }
 </style>
@@ -106,7 +118,7 @@
             <br>
             <!-- TEASER -->
             <div>
-                <a href="./src/html/teaser.png"><img src="./src/html/teaser.png" style="width: 1000px; display: block; margin: 0 auto;"></a>
+                <img src="./src/html/teaser.png" style="width: 1000px; display: block; margin: 0 auto;">
                 <div style="width: 800px; margin: 0 auto"><i style="font-size:14px;">Examples of the synthesis pipeline. We adjust the image brightness for better visualization. From left to right: input images, predicted heatmaps, and synthesized images with phantom pedestrians according to the predicted heatmaps. The likelihoods of head and feet positions are depicted in red and blue</i></div>
             </div>
             <br>
@@ -145,13 +157,13 @@
             <h1 style="text-align: center;">Predicted Results</h1>
             <p style="text-align: center;">Hover over the input images to see the predicted heatmaps <i>(The likelihoods of head and feet positions are depicted in red and blue.)</i></p>
             <table class="center">
-                <div>
+                <tr>
                     <td>
                         <div class="fade">
                         <img width="300px" src="./src/html/d1_h.png" class="bottom">
                         </div>
                         <div class="fade">
-                        <img width="300px" src="./src/html/d1.png" class="top">
+                        <img width="300px" src="./src/html/d1.png" class="top_s">
                         </div>
                     </td>
                     <td >
@@ -159,7 +171,7 @@
                         <img width="300px" src="./src/html/d2_h.png" class="bottom">
                         </div>
                         <div class="fade">
-                        <img width="300px" src="./src/html/d2.png" class="top">
+                        <img width="300px" src="./src/html/d2.png" class="top_s">
                         </div>
                     </td>
                     <td>
@@ -167,7 +179,7 @@
                         <img width="300px" src="./src/html/t1_h.png" class="bottom">
                         </div>
                         <div class="fade">
-                        <img width="300px" src="./src/html/t1.png" class="top">
+                        <img width="300px" src="./src/html/t1.png" class="top_s">
                         </div>
                     </td>
                     <td >
@@ -175,21 +187,20 @@
                         <img width="300px" src="./src/html/t2_h.png" class="bottom">
                         </div>
                         <div class="fade">
-                        <img width="300px" src="./src/html/t2.png" class="top">
+                        <img width="300px" src="./src/html/t2.png" class="top_s">
                         </div>
                     </td>
-                </div>
+                </tr>
             </table>
 
-            <table class="center" style="margin-top: -120px; margin-bottom: -140px">
-
-                <div style="position:relative; top: -120px">
+            <table class="center" style="margin-top: -135px;">
+                <tr>
                     <td>
                         <div class="fade">
                         <img width="300px" src="./src/html/p1_h.png" class="bottom">
                         </div>
                         <div class="fade">
-                        <img width="300px" src="./src/html/p1.png" class="top">
+                        <img width="300px" src="./src/html/p1.png" class="top_s">
                         </div>
                     </td>
                     <td >
@@ -197,7 +208,7 @@
                         <img width="300px" src="./src/html/p2_h.png" class="bottom">
                         </div>
                         <div class="fade">
-                        <img width="300px" src="./src/html/p2.png" class="top">
+                        <img width="300px" src="./src/html/p2.png" class="top_s">
                         </div>
                     </td>
                     <td>
@@ -205,7 +216,7 @@
                         <img width="300px" src="./src/html/g1_h.png" class="bottom">
                         </div>
                         <div class="fade">
-                        <img width="300px" src="./src/html/g1.png" class="top">
+                        <img width="300px" src="./src/html/g1.png" class="top_s">
                         </div>
                     </td>
                     <td >
@@ -213,10 +224,188 @@
                         <img width="300px" src="./src/html/g2_h.png" class="bottom">
                         </div>
                         <div class="fade">
-                        <img width="300px" src="./src/html/g2.png" class="top">
+                        <img width="300px" src="./src/html/g2.png" class="top_s">
                         </div>
                     </td>
-                </div>
+                </tr>
+            </table>
+
+
+            <table class="center" style="margin-top: -135px;">
+                <tr>
+                    <td>
+                        <div class="fade">
+                        <img width="300px" src="./src/html/m_0_h.png" class="bottom">
+                        </div>
+                        <div class="fade">
+                        <img width="300px" src="./src/html/m0.png" class="top_s">
+                        </div>
+                    </td>
+                    <td >
+                        <div class="fade">
+                        <img width="300px" src="./src/html/m1_h.png" class="bottom">
+                        </div>
+                        <div class="fade">
+                        <img width="300px" src="./src/html/m1.png" class="top_s">
+                        </div>
+                    </td>
+                    <td>
+                        <div class="fade">
+                        <img width="300px" src="./src/html/m2_h.png" class="bottom">
+                        </div>
+                        <div class="fade">
+                        <img width="300px" src="./src/html/m2.png" class="top_s">
+                        </div>
+                    </td>
+                    <td >
+                        <div class="fade">
+                        <img width="300px" src="./src/html/m3_h.png" class="bottom">
+                        </div>
+                        <div class="fade">
+                        <img width="300px" src="./src/html/m3.png" class="top_s">
+                        </div>
+                    </td>
+                </tr>
+            </table>
+
+
+            <table class="center" style="margin-top: -135px;">
+                <tr>
+                    <td>
+                        <div class="fade">
+                        <img width="300px" src="./src/html/m4_h.png" class="bottom">
+                        </div>
+                        <div class="fade">
+                        <img width="300px" src="./src/html/m4.png" class="top_s">
+                        </div>
+                    </td>
+                    <td >
+                        <div class="fade">
+                        <img width="300px" src="./src/html/m13_h.png" class="bottom">
+                        </div>
+                        <div class="fade">
+                        <img width="300px" src="./src/html/m13.png" class="top_s">
+                        </div>
+                    </td>
+                    <td>
+                        <div class="fade">
+                        <img width="300px" src="./src/html/m6_h.png" class="bottom">
+                        </div>
+                        <div class="fade">
+                        <img width="300px" src="./src/html/m6.png" class="top_s">
+                        </div>
+                    </td>
+                    <td >
+                        <div class="fade">
+                        <img width="300px" src="./src/html/m7_h.png" class="bottom">
+                        </div>
+                        <div class="fade">
+                        <img width="300px" src="./src/html/m7.png" class="top_s">
+                        </div>
+                    </td>
+                </tr>
+            </table>
+
+
+            <table class="center" style="margin-top: -135px; margin-bottom: -150px">
+                <tr>
+                    <td>
+                        <div class="fade">
+                        <img width="300px" src="./src/html/m12_h.png" class="bottom">
+                        </div>
+                        <div class="fade">
+                        <img width="300px" src="./src/html/m12.png" class="top_s">
+                        </div>
+                    </td>
+                    <td >
+                        <div class="fade">
+                        <img width="300px" src="./src/html/m9_h.png" class="bottom">
+                        </div>
+                        <div class="fade">
+                        <img width="300px" src="./src/html/m9.png" class="top_s">
+                        </div>
+                    </td>
+                    <td>
+                        <div class="fade">
+                        <img width="300px" src="./src/html/m14_h.png" class="bottom">
+                        </div>
+                        <div class="fade">
+                        <img width="300px" src="./src/html/m14.png" class="top_s">
+                        </div>
+                    </td>
+                    <td >
+                        <div class="fade">
+                        <img width="300px" src="./src/html/m11_h.png" class="bottom">
+                        </div>
+                        <div class="fade">
+                        <img width="300px" src="./src/html/m11.png" class="top_s">
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <br><br><hr>
+        <!-- Empirical Experiments-->
+        <div>
+            <h1 style="text-align: center;">Empirical Experiments</h1>
+            <table class="center" style="border-spacing: 20 10px;">
+                <tr style="vertical-align: top;">
+                  <td>
+                    <div style="width:512px"><h5 style="font-size:22px">Target image</h5></div>
+                      <div style="width:512px; margin-top: -30px"><p style="font-size:16px">Input images.<br></p></div>
+                  </td>
+                  <td>
+                    <div style="width:512px">
+                        <h5 style="font-size:22px">Our method</h5>
+                    </div>
+                      <div style="width:512px; margin-top: -30px"><p style="font-size:16px">Pedestrians are placed and chosen <b>coherent with the predicted heatmap</b>.<br>(Hover over the synthesis output to see the predicted heatmap.)<br></p></div>
+                  </td>
+                </tr>
+                <tr style="vertical-align: top;">
+                  <td>
+                    <div ><img width="512px" src="./src/html/munich_000094_000019_leftImg8bit.png"></div>
+                  </td>
+                  <td>
+                    <div class="fade">
+                    <img width="512px" src="./src/html/munich_000094_000019_leftImg8bit_heatmap.png" class="bottom">
+                    </div>
+                    <div class="fade">
+                    <img width="512px" src="./src/html/munich_000094_000019_leftImg8bit_synthesis.png" class="top">
+                    </div>
+                  </td>
+                </tr>
+            </table>
+
+            <table class="center" style="margin-top: -250px; margin-bottom: -260px; border-spacing: 20 10px;">
+                <tr style="vertical-align: top;">
+                  <td>
+                    <div style="width:512px"><h5 style="font-size:22px">Baseline A</h5></div>
+                      <div style="width:512px; margin-top: -30px"><p style="font-size:16px">Pedestrians are placed and chosen <b>randomly</b>.<br>(Hover over the synthesis output to see different possibles.)<br></p></div>
+                  </td>
+                  <td>
+                    <div style="width:512px"><h5 style="font-size:22px">Baseline B</h5></div>
+                      <div style="width:512px; margin-top: -30px"><p style="font-size:16px">Pedestrians are borrow from <b>the other street scene</b>.<br>(Hover over the synthesis output to see the original scene.)<br></p></div>
+                  </td>
+                </tr>
+                <tr style="vertical-align: top;">
+                  <td>
+                    <div class="fade">
+                    <img width="512px" src="./src/html/munich_000094_000019_leftImg8bit_0_synthesis.png" class="bottom">
+                    </div>
+                    <div class="fade">
+                    <img width="512px" src="./src/html/munich_000094_000019_leftImg8bit_7_synthesis.png" class="top">
+                    </div>
+                  </td>
+                  </td>
+                  <td>
+                    <div class="fade">
+                    <img width="512px" src="./src/html/weimar_000018_000019_leftImg8bit.png" class="bottom">
+                    </div>
+                    <div class="fade">
+                    <img width="512px" src="./src/html/58_munich_000094_000019_leftImg8bit.png" class="top">
+                    </div>
+                  </td>
+                </tr>
             </table>
         </div>
         <br><br><hr>
@@ -255,7 +444,7 @@
             </div>
 
         </div>
-        <hr>
+        <br><br><hr>
         <!-- ACKNOWLEDGEMENT -->
         <div>
             <h1 style="text-align: center;">Acknowledgements</h1>

@@ -1632,9 +1632,9 @@ def pedestrian_from_city_big():
 
 def wrong_random():
     # Image, heatmap, semantic
-    dir = '/data/vllab1/Github/streetview_synthesize/Image synthesis/test'
+    dir = '/data/vllab1/Github/streetview_synthesize/Image synthesis/valid'
     image_name = sorted(glob(os.path.join(dir, "*_image.png")))
-    dir = '/data/vllab1/Github/streetview_synthesize/Image synthesis/test_low'
+    dir = '/data/vllab1/Github/streetview_synthesize/Image synthesis/valid_low'
     heatmap_name = sorted(glob(os.path.join(dir, "*_heatmap.png")))
     dir = '/data/vllab1/dataset/CITYSCAPES/gtFine_trainvaltest/gtFine/val'
     semantic_name = []
@@ -1648,7 +1648,7 @@ def wrong_random():
     ped_dir = '/data/vllab1/dataset/pedestrian/CITYSCAPES_single/image'
     mask_dir = '/data/vllab1/dataset/pedestrian/CITYSCAPES_single/mask'
     dataset_dir = '/data/vllab1/dataset/pedestrian/CITYSCAPES_single'
-    file_name = os.path.join(dataset_dir, 'pedestrian_list_single.pkl')
+    file_name = os.path.join(dataset_dir, 'pedestrian_list.pkl')
     file_obj = open(file_name, 'r')
     pedestrian_list = pickle.load(file_obj)
 
@@ -1786,8 +1786,122 @@ def wrong_random():
 
         # scipy.misc.imsave('ICCV/synthesis_visual/{}_image.png'.format(name), image.astype(np.uint8))
         # scipy.misc.imsave('ICCV/synthesis_visual/{}_semantic.png'.format(name), semantic_vidualize(semantic).astype(np.uint8))
-        scipy.misc.imsave('ICCV/wrong_random/{}_heatmap.png'.format(name), image_v.astype(np.uint8))
-        scipy.misc.imsave('ICCV/wrong_random/{}_synthesis.png'.format(name), image_synthesis.astype(np.uint8))
+        scipy.misc.imsave('./{}_heatmap.png'.format(name), image_v.astype(np.uint8))
+        scipy.misc.imsave('./{}_synthesis.png'.format(name), image_synthesis.astype(np.uint8))
+        #scipy.misc.imsave('ICCV/wrong_random/{}_semantic.png'.format(name), semantic_vidualize(semantic).astype(np.uint8))
+        break
+
+
+def wrong_random_complete():
+    data_len = 10
+
+    # pedestrian image, mask, list
+    ped_dir = '/data/vllab1/dataset/pedestrian/CITYSCAPES_single/image'
+    mask_dir = '/data/vllab1/dataset/pedestrian/CITYSCAPES_single/mask'
+    dataset_dir = '/data/vllab1/dataset/pedestrian/CITYSCAPES_single'
+    file_name = os.path.join(dataset_dir, 'pedestrian_list.pkl')
+    file_obj = open(file_name, 'r')
+    pedestrian_list = pickle.load(file_obj)
+
+    # parameter
+    sig, threshold = 2, 5
+    print(sig, threshold)
+
+    for i in range(0, data_len):
+        print('{:d}/{:d}'.format(i, data_len))
+        # Name split
+        # get image, semantic, heatmap_low
+        name = 'munich_000094_000019_leftImg8bit'
+        image = scipy.misc.imread('./src/html/munich_000094_000019_leftImg8bit.png').astype(np.float32)
+        # Use segment heatmap seythesis image
+        image_synthesis = np.copy(image)
+        total_ped = random.randint(5, 12)
+        for label in range(0, total_ped):
+            width, height = random.randint(20, 40), random.randint(40,100)
+            ceny, cenx = random.randint(10, 250), random.randint(10, 500)
+            aspect = float(width) / float(height)
+
+            pedestrian_list.sort(key=lambda x: abs(x.aspect - aspect))
+            pedestrian_list_top10 = pedestrian_list
+            pedestrian_list_top10.sort(key=lambda x: abs(x.width - width) + abs(x.height - height))
+            #sel_index = np.random.randint(0, pedestrian_list_len)
+            sel_index = 0
+            #cenx, ceny = np.random.randint(0, 512), np.random.randint(0, 256)
+            #ceny, cenx = np.round(np.mean(human_pixel[0])), np.round(np.mean(human_pixel[1]))
+
+            sel_ped_name, ped_width, ped_height = \
+                pedestrian_list_top10[sel_index].name, pedestrian_list_top10[sel_index].width, pedestrian_list_top10[sel_index].height
+            sel_ped_image = scipy.misc.imread(os.path.join(ped_dir, sel_ped_name)).astype(np.float32)
+            sel_ped_mask = scipy.misc.imread(os.path.join(mask_dir, sel_ped_name)).astype(np.float32)/255
+
+            if False:
+
+                #sel_ped_mask = np.dstack((sel_ped_mask, sel_ped_mask, sel_ped_mask))
+                #sel_ped_image *= sel_ped_mask
+                ped_width, ped_height = int(ped_width) + 20, int(ped_height) + 20
+
+                cut_upy, cut_dny, cut_lx, cut_rx = 0, 0, 0, 0
+                lx = int(np.round(cenx - ped_width / 2))
+                if lx < 0:
+                    cut_lx = -lx
+                    lx = 0
+
+                upy = int(np.round(ceny - ped_height/2))
+                if upy < 0:
+                    cut_upy = -upy
+                    upy = 0
+
+                rx = lx + ped_width - cut_lx
+                if rx > 512-1:
+                    cut_rx = rx - (512-1)
+                    rx = 512-1
+
+                dny = upy + ped_height - cut_upy
+                if dny > 256-1:
+                    cut_dny = dny - (256-1)
+                    dny = 256-1
+                #hole = (1-sel_ped_mask)[cut_upy:ped_height-cut_dny, cut_lx:ped_width-cut_rx, :] * image_synthesis[upy:dny, lx:rx, :]
+                #fill = hole + sel_ped_image[cut_upy:ped_height-cut_dny, cut_lx:ped_width-cut_rx, :]
+                #image_synthesis[upy:dny, lx:rx, :] = fill
+
+                for_poisson_image = np.ones((ped_height, ped_width, 3)) * 255
+                for_poisson_image[10:-10, 10:-10, :] = sel_ped_image
+                for_poisson_mask = np.zeros((ped_height, ped_width))
+                for_poisson_mask[10:-10, 10:-10] = sel_ped_mask
+                for_poisson_mask = scipy.ndimage.morphology.binary_dilation(for_poisson_mask, iterations=1).astype(for_poisson_mask.dtype)
+                image_synthesis = poissonblending.blend(image_synthesis, for_poisson_image, for_poisson_mask, offset=(upy-10, lx-10))
+            else:
+                sel_ped_mask = np.dstack((sel_ped_mask, sel_ped_mask, sel_ped_mask))
+                sel_ped_image *= sel_ped_mask
+                ped_width, ped_height = int(ped_width), int(ped_height)
+
+                cut_upy, cut_dny, cut_lx, cut_rx = 0, 0, 0, 0
+                lx = int(np.round(cenx - ped_width / 2))
+                if lx < 0:
+                    cut_lx = -lx
+                    lx = 0
+
+                upy = int(np.round(ceny - ped_height / 2))
+                if upy < 0:
+                    cut_upy = -upy
+                    upy = 0
+
+                rx = lx + ped_width - cut_lx
+                if rx > 512 - 1:
+                    cut_rx = rx - (512 - 1)
+                    rx = 512 - 1
+
+                dny = upy + ped_height - cut_upy
+                if dny > 256 - 1:
+                    cut_dny = dny - (256 - 1)
+                    dny = 256 - 1
+                hole = (1-sel_ped_mask)[cut_upy:ped_height-cut_dny, cut_lx:ped_width-cut_rx, :] * image_synthesis[upy:dny, lx:rx, :]
+                fill = hole + sel_ped_image[cut_upy:ped_height-cut_dny, cut_lx:ped_width-cut_rx, :]
+                image_synthesis[upy:dny, lx:rx, :] = fill
+
+        # scipy.misc.imsave('ICCV/synthesis_visual/{}_image.png'.format(name), image.astype(np.uint8))
+        # scipy.misc.imsave('ICCV/synthesis_visual/{}_semantic.png'.format(name), semantic_vidualize(semantic).astype(np.uint8))
+        scipy.misc.imsave('./{}_{:d}_synthesis.png'.format(name, i), image_synthesis.astype(np.uint8))
         #scipy.misc.imsave('ICCV/wrong_random/{}_semantic.png'.format(name), semantic_vidualize(semantic).astype(np.uint8))
         #break
 
@@ -3348,6 +3462,7 @@ def CVPR_syn():
 
 if __name__ == '__main__':
     #store_single('/data/vllab1/CVPR/workshop/predict_training/7200_pred.png', 128, 256, 3, 2)
-    wrong_similiar_random()
+    #wrong_similiar_random()
+    wrong_random_complete()
     pass
 

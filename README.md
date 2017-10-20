@@ -1,7 +1,8 @@
 # Streetview Synthesize
 Nonexistent Pedestrian Detection
+- [Project page](https://ydnaandy123.github.io/streetview_synthesize/)
 - [CVPR2017 workshop poster](https://drive.google.com/open?id=0B4AGJgH-EFvIYUtqb1M4dTlHY3M)
-- [intro video](https://www.youtube.com/watch?v=t8IHB29uTQM)
+- [intro video](https://www.youtube.com/watch?v=MF70VeZYajo)
 - [intro power point](https://drive.google.com/open?id=0B4AGJgH-EFvIUEdySV9FQ2hGVlE)
 - [ICCV2017 workshop]
 
